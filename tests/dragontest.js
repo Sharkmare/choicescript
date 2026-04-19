@@ -513,3 +513,260 @@ test("interpolate temp in prose", function() {
     scene.execute();
     ok(printed.join("").indexOf("the Magnificent") !== -1, "temp interpolated in prose");
 });
+
+module("Expression Functions — Math");
+
+test("floor()", function() {
+    var scene = new Scene();
+    scene.loadLines(dedent`
+        *temp x floor(3.9)`);
+    scene.execute();
+    doh.is(3, scene.temps.x, "floor(3.9) = 3");
+});
+
+test("ceil()", function() {
+    var scene = new Scene();
+    scene.loadLines(dedent`
+        *temp x ceil(3.1)`);
+    scene.execute();
+    doh.is(4, scene.temps.x, "ceil(3.1) = 4");
+});
+
+test("abs() positive", function() {
+    var scene = new Scene();
+    scene.loadLines(dedent`
+        *temp x abs(7)`);
+    scene.execute();
+    doh.is(7, scene.temps.x, "abs(7) = 7");
+});
+
+test("abs() negative literal", function() {
+    var scene = new Scene();
+    scene.loadLines(dedent`
+        *temp x abs(-5)`);
+    scene.execute();
+    doh.is(5, scene.temps.x, "abs(-5) = 5");
+});
+
+test("unary minus on literal", function() {
+    var scene = new Scene();
+    scene.loadLines(dedent`
+        *temp x -7`);
+    scene.execute();
+    doh.is(-7, scene.temps.x, "*temp x -7 = -7");
+});
+
+test("unary minus on variable", function() {
+    var scene = new Scene();
+    scene.loadLines(dedent`
+        *temp a 4
+        *temp x -a`);
+    scene.execute();
+    doh.is(-4, scene.temps.x, "*temp x -a negates variable");
+});
+
+test("addition with unary minus operand", function() {
+    var scene = new Scene();
+    scene.loadLines(dedent`
+        *temp x 10 + -3`);
+    scene.execute();
+    doh.is(7, scene.temps.x, "10 + -3 = 7");
+});
+
+test("min(a,b)", function() {
+    var scene = new Scene();
+    scene.loadLines(dedent`
+        *temp x min(10, 3)`);
+    scene.execute();
+    doh.is(3, scene.temps.x, "min(10, 3) = 3");
+});
+
+test("max(a,b)", function() {
+    var scene = new Scene();
+    scene.loadLines(dedent`
+        *temp x max(10, 3)`);
+    scene.execute();
+    doh.is(10, scene.temps.x, "max(10, 3) = 10");
+});
+
+module("Expression Functions — String");
+
+test("lowercase()", function() {
+    var scene = new Scene();
+    scene.loadLines(dedent`
+        *temp x lowercase("DRAGON")`);
+    scene.execute();
+    doh.is("dragon", scene.temps.x, "lowercase converts to lower case");
+});
+
+test("uppercase()", function() {
+    var scene = new Scene();
+    scene.loadLines(dedent`
+        *temp x uppercase("dragon")`);
+    scene.execute();
+    doh.is("DRAGON", scene.temps.x, "uppercase converts to upper case");
+});
+
+module("*push and *pop");
+
+test("push appends to array", function() {
+    var scene = new Scene();
+    scene.name = "startup";
+    scene.loadLines(dedent`
+        *create loot_count 0
+        *push loot "gold coin"
+        *push loot "silver cup"`);
+    scene.execute();
+    doh.is(2, scene.stats.loot_count, "count is 2 after two pushes");
+    doh.is("gold coin", scene.stats.loot_1, "first element correct");
+    doh.is("silver cup", scene.stats.loot_2, "second element correct");
+});
+
+test("pop retrieves last element", function() {
+    var scene = new Scene();
+    scene.name = "startup";
+    scene.loadLines(dedent`
+        *create stack_count 0
+        *push stack 10
+        *push stack 20
+        *temp top 0
+        *pop stack top`);
+    scene.execute();
+    doh.is(20, scene.temps.top, "popped value is last pushed");
+    doh.is(1, scene.stats.stack_count, "count decremented after pop");
+});
+
+test("pop on empty array throws", function() {
+    var scene = new Scene();
+    scene.name = "startup";
+    scene.loadLines(dedent`
+        *create empty_count 0
+        *temp discard 0
+        *pop empty discard`);
+    raises(function() { scene.execute(); }, null, "pop on empty array should throw");
+});
+
+module("*for / *next Loop");
+
+test("for loop iterates correct number of times", function() {
+    var scene = new Scene();
+    scene.loadLines(dedent`
+        *temp total 0
+        *for i from 1 to 5
+        *set total +1
+        *next i`);
+    scene.execute();
+    doh.is(5, scene.temps.total, "loop body executed 5 times");
+});
+
+test("for loop variable has correct final value", function() {
+    var scene = new Scene();
+    scene.loadLines(dedent`
+        *for i from 1 to 4
+        *next i`);
+    scene.execute();
+    // after loop, i should equal 4 (last value that satisfied i <= max)
+    doh.is(4, scene.temps.i, "loop variable equals max after completion");
+});
+
+test("for loop with step 2", function() {
+    var scene = new Scene();
+    scene.loadLines(dedent`
+        *temp total 0
+        *for i from 0 to 8 step 2
+        *set total +1
+        *next i`);
+    scene.execute();
+    doh.is(5, scene.temps.total, "step-2 loop: 0,2,4,6,8 = 5 iterations");
+});
+
+test("for loop body skipped when min > max", function() {
+    var scene = new Scene();
+    scene.loadLines(dedent`
+        *temp ran false
+        *for i from 10 to 5
+        *set ran true
+        *next i`);
+    scene.execute();
+    doh.is(false, scene.temps.ran, "body never executes when min > max");
+});
+
+test("for loop throws at iteration limit", function() {
+    var scene = new Scene();
+    scene.loadLines(dedent`
+        *for i from 1 to 999999
+        *next i`);
+    raises(function() { scene.execute(); }, null, "runaway for loop should throw");
+});
+
+module("*switch / *case / *endswitch");
+
+test("switch matches correct case", function() {
+    printed = [];
+    var scene = new Scene();
+    scene.loadLines(dedent`
+        *temp rank 2
+        *switch rank
+        *case 1
+        first
+        *finish
+        *case 2
+        second
+        *finish
+        *default
+        other
+        *finish
+        *endswitch`);
+    scene.execute();
+    doh.is("<p>second </p>", printed.join(""), "rank 2 routes to second branch");
+});
+
+test("switch falls through to default when no case matches", function() {
+    printed = [];
+    var scene = new Scene();
+    scene.loadLines(dedent`
+        *temp rank 99
+        *switch rank
+        *case 1
+        first
+        *finish
+        *default
+        other
+        *finish
+        *endswitch`);
+    scene.execute();
+    doh.is("<p>other </p>", printed.join(""), "unmatched switch routes to default");
+});
+
+test("switch with no match and no default skips block", function() {
+    printed = [];
+    var scene = new Scene();
+    scene.loadLines(dedent`
+        *temp rank 99
+        *switch rank
+        *case 1
+        first
+        *finish
+        *endswitch
+        after`);
+    scene.execute();
+    ok(printed.join("").indexOf("after") !== -1, "execution continues after endswitch when no case matched");
+    ok(printed.join("").indexOf("first") === -1, "first branch not printed");
+});
+
+module("*return value");
+
+test("gosub can return a value via temps.choice_return", function() {
+    var scene = new Scene();
+    scene.loadLines(dedent`
+        *temp result 0
+        *gosub double 21
+        *set result choice_return
+        *finish
+        *label double
+        *temp n 0
+        *params n
+        *return n*2`);
+    scene.execute();
+    doh.is(42, scene.temps.result, "gosub returned 42 (21*2)");
+});

@@ -530,10 +530,8 @@ Scene.prototype.loadScene = function loadScene() {
             return;
           }
         }
-        var result = xhr.responseText;
-        scene = result;
-        scene = scene.replace(/\r/g, "");
-        this.loading = false;
+        var scene = xhr.responseText.replace(/\r/g, "");
+        self.loading = false;
         self.loadLines(scene);
         if (self.executing) {
             safeCall(self, function () {
@@ -751,7 +749,7 @@ Scene.prototype.parseLabels = function parseLabels() {
         this.rollbackLineCoverage();
         var line = this.lines[this.lineNum];
         // strip byte order mark
-        if (this.lineNum == 0 && line.charCodeAt(0) == 65279) lines[0] = line.substring(1);
+        if (this.lineNum == 0 && line.charCodeAt(0) == 65279) this.lines[0] = line.substring(1);
         var invalidCharacter = line.match(/^(.*)\ufffd/);
         if (invalidCharacter) throw new Error(this.lineMsg() + "invalid character. (ChoiceScript text should be saved in the UTF-8 encoding.) " + invalidCharacter[0]);
         var result = /^(\s*)\*(\w+)(.*)/.exec(line);
@@ -1078,7 +1076,11 @@ Scene.prototype.params = function scene_params(data) {
     }
 };
 
-Scene.prototype["return"] = function scene_return() {
+Scene.prototype["return"] = function scene_return(data) {
+    // Accessible to the caller after same-scene *gosub only; cross-scene swaps this.temps.
+    if (data && data.trim()) {
+        this.temps.choice_return = this.evaluateExpr(this.tokenizeExpr(data.trim()));
+    }
     var stackFrame;
     if (this.temps.choice_substack && this.temps.choice_substack.length) {
       stackFrame = this.temps.choice_substack.pop();
@@ -1240,7 +1242,7 @@ Scene.prototype.goto_scene = function gotoScene(data, isGosubScene) {
       } else {
         this["goto"](result.label);
       }
-      this.temps = {choice_reuse:"allow", choice_user_restored:false, _choiceEnds:{}};
+      this.temps = {choice_reuse:"allow", choice_user_restored:false, _choiceEnds:{}, _looplimit: 1000};
       this.temps.param = result.param;
       this.initialCommands = true;
       return;
@@ -3619,7 +3621,7 @@ Scene.prototype.stat_chart = function stat_chart() {
 
   }
 
-  for (i = 0; i < rows.length; i++) {
+  for (var i = 0; i < rows.length; i++) {
     var row = rows[i];
     var type = row.type;
     var variable = row.variable;
@@ -3911,7 +3913,7 @@ Scene.prototype.timer = function(dateString) {
     }
     var self = this;
     showTicker(target, end, function() {
-      clearScreen(loadAndRestoreGame());
+      clearScreen(loadAndRestoreGame);
     });
   }
 }
@@ -4262,9 +4264,9 @@ Scene.prototype.evaluateValueToken = function evaluateValueToken(token, stack) {
         value = this.evaluateExpr(stack, "CLOSE_CURLY");
         return this.getVar(value);
     } else if ("FUNCTION" == name) {
-        if (!this.functions[token.func]) throw new Error(this.lineMsg + "Unknown function " + token.func);
-        value = this.evaluateExpr(stack, "CLOSE_PARENTHESIS");
-        return this.functions[token.func].call(this, value);
+        if (!this.functions[token.func]) throw new Error(this.lineMsg() + "Unknown function " + token.func);
+        var args = this.evaluateFunctionArgs(stack);
+        return this.functions[token.func].apply(this, args);
     } else if ("NUMBER" == name) {
         return token.value;
     } else if ("STRING" == name) {
@@ -4277,9 +4279,38 @@ Scene.prototype.evaluateValueToken = function evaluateValueToken(token, stack) {
           variable += "_" + this.evaluateExpr(stack, "CLOSE_SQUARE");
         }
         return this.getVar(variable);
+    } else if ("OPERATOR" == name && token.value === "-") {
+        // unary minus: '-' where a value is expected (start of expr, after operator, inside parens/args)
+        if (!stack.length) throw new Error(this.lineMsg() + "Unary minus with no operand");
+        var operand = this.evaluateValueToken(stack.shift(), stack);
+        if (isNaN(operand * 1)) throw new Error(this.lineMsg() + "Unary minus applied to non-numeric value: " + operand);
+        return -(operand * 1);
     } else {
         throw new Error(this.lineMsg() + "Invalid expression at char "+token.pos+", expected NUMBER, STRING, VAR or PARENTHETICAL, was: " + name + " [" + token.value + "]");
     }
+};
+
+// The FUNCTION regex consumes the '(' — args start immediately after.
+Scene.prototype.evaluateFunctionArgs = function evaluateFunctionArgs(stack) {
+    var args = [];
+    var argStack = [];
+    var depth = 0;
+    while (stack.length) {
+        var tok = stack.shift();
+        if (tok.name === "CLOSE_PARENTHESIS" && depth === 0) {
+            if (argStack.length) args.push(this.evaluateExpr(argStack, null));
+            return args;
+        } else if (tok.name === "COMMA" && depth === 0) {
+            args.push(this.evaluateExpr(argStack, null));
+            argStack = [];
+        } else {
+            // FUNCTION regex consumed its '(', so a FUNCTION token opens a depth level without a paired OPEN_PARENTHESIS.
+            if (tok.name === "OPEN_PARENTHESIS" || tok.name === "FUNCTION") depth++;
+            if (tok.name === "CLOSE_PARENTHESIS") depth--;
+            argStack.push(tok);
+        }
+    }
+    throw new Error(this.lineMsg() + "Unexpected end of expression inside function call");
 };
 
 // turn a var token into its name, remove it from the stack
@@ -4362,6 +4393,34 @@ Scene.prototype.functions = {
   },
   auto: function() {
     throw new Error(this.lineMsg()+"Invalid expression, auto() must come after a < or > symbol");
+  },
+  floor: function(value) {
+    if (isNaN(value*1)) throw new Error(this.lineMsg()+"floor() value is not a number: " + value);
+    return Math.floor(value*1);
+  },
+  ceil: function(value) {
+    if (isNaN(value*1)) throw new Error(this.lineMsg()+"ceil() value is not a number: " + value);
+    return Math.ceil(value*1);
+  },
+  abs: function(value) {
+    if (isNaN(value*1)) throw new Error(this.lineMsg()+"abs() value is not a number: " + value);
+    return Math.abs(value*1);
+  },
+  lowercase: function(value) {
+    return String(value).toLowerCase();
+  },
+  uppercase: function(value) {
+    return String(value).toUpperCase();
+  },
+  min: function(a, b) {
+    if (isNaN(a*1)) throw new Error(this.lineMsg()+"min() first argument is not a number: " + a);
+    if (isNaN(b*1)) throw new Error(this.lineMsg()+"min() second argument is not a number: " + b);
+    return Math.min(a*1, b*1);
+  },
+  max: function(a, b) {
+    if (isNaN(a*1)) throw new Error(this.lineMsg()+"max() first argument is not a number: " + a);
+    if (isNaN(b*1)) throw new Error(this.lineMsg()+"max() second argument is not a number: " + b);
+    return Math.max(a*1, b*1);
   }
 };
 
@@ -4675,7 +4734,7 @@ Scene.prototype.achievement = function scene_achievement(data) {
   }
   var visible = (visibility != "hidden");
   var pointString = parsed[3];
-  if (!/[1-9][0-9]*/.test(pointString)) {
+  if (!/^[1-9][0-9]*$/.test(pointString)) {
     throw new Error(this.lineMsg()+"Invalid *achievement, the third word should be an integer number of points: " + pointString);
   }
   var points = parseInt(pointString, 10);
@@ -4933,7 +4992,7 @@ Scene.tokens = [
     {name:"CLOSE_CURLY", test:function(str){ return Scene.regexpMatch(str,/^\}/); } },
     {name:"OPEN_SQUARE", test:function(str){ return Scene.regexpMatch(str,/^\[/); } },
     {name:"CLOSE_SQUARE", test:function(str){ return Scene.regexpMatch(str,/^\]/); } },
-    {name:"FUNCTION", test:function(str){ return Scene.regexpMatch(str,/^(not|round|timestamp|log|length|auto)\s*\(/); } },
+    {name:"FUNCTION", test:function(str){ return Scene.regexpMatch(str,/^(not|round|timestamp|log|length|auto|floor|ceil|abs|lowercase|uppercase|min|max)\s*\(/); } },
     {name:"NUMBER", test:function(str){ return Scene.regexpMatch(str,/^\d+(\.\d+)?\b/); } },
     {name:"STRING", test:function(str, line, sceneObj) {
             var i;
@@ -5033,7 +5092,7 @@ Scene.operators = {
     ">": function greaterThan(v1,v2,line,sceneObj) { var name = null; if (sceneObj) name = sceneObj.name; return num(v1,line,name) > num(v2,line,name); },
     "<=": function lessThanOrEquals(v1,v2,line,sceneObj) { var name = null; if (sceneObj) name = sceneObj.name; return num(v1,line,name) <= num(v2,line,name); },
     ">=": function greaterThanOrEquals(v1,v2,line,sceneObj) { var name = null; if (sceneObj) name = sceneObj.name; return num(v1,line,name) >= num(v2,line,name); },
-    "!=": function notEquals(v1,v2) { return v1 != v2; },
+    "!=": function notEquals(v1,v2) { return !(v1 == v2) && String(v1) !== String(v2); },
     "and": function and(v1, v2, line, sceneObj) {
         var name = null; if (sceneObj) name = sceneObj.name; 
         return bool(v1,line,name) && bool(v2,line,name);
@@ -5043,6 +5102,200 @@ Scene.operators = {
         return bool(v1,line,name) || bool(v2,line,name);
     },
     "modulo": function modulo(v1,v2,line,sceneObj) { var name = null; if (sceneObj) name = sceneObj.name; return num(v1,line,name) % num(v2,line,name); },
+};
+
+// *push arrayname value
+// setVar rejects undeclared variables; new slots written directly to whichever store owns arrayname_count.
+Scene.prototype.push = function scene_push(data) {
+    if (!data || !data.trim()) throw new Error(this.lineMsg() + "*push requires an array name and a value");
+    var parts = data.trim().match(/^(\S+)\s+([\s\S]+)$/);
+    if (!parts) throw new Error(this.lineMsg() + "*push requires an array name and a value: " + data);
+    var arrayName = parts[1].toLowerCase();
+    var value = this.evaluateExpr(this.tokenizeExpr(parts[2].trim()));
+    var countVar = arrayName + "_count";
+    var inStats = typeof this.stats[countVar] !== "undefined";
+    var store = inStats ? this.stats : this.temps;
+    if (typeof store[countVar] === "undefined") {
+        throw new Error(this.lineMsg() + "*push: array not found (declare " + countVar + " with *create or *temp first): " + arrayName);
+    }
+    var currentCount = num(store[countVar], this.lineNum+1, this.name);
+    currentCount++;
+    store[arrayName + "_" + currentCount] = value;
+    store[countVar] = currentCount;
+};
+
+// *pop arrayname destvar
+Scene.prototype.pop = function scene_pop(data) {
+    if (!data || !data.trim()) throw new Error(this.lineMsg() + "*pop requires an array name and a destination variable");
+    var parts = data.trim().match(/^(\S+)\s+(\S+)$/);
+    if (!parts) throw new Error(this.lineMsg() + "*pop requires an array name and a destination variable: " + data);
+    var arrayName = parts[1].toLowerCase();
+    var destVar = parts[2].toLowerCase();
+    var countVar = arrayName + "_count";
+    var inStats = typeof this.stats[countVar] !== "undefined";
+    var store = inStats ? this.stats : this.temps;
+    if (typeof store[countVar] === "undefined") {
+        throw new Error(this.lineMsg() + "*pop: array not found (declare " + countVar + " with *create or *temp first): " + arrayName);
+    }
+    var currentCount = num(store[countVar], this.lineNum+1, this.name);
+    if (currentCount < 1) throw new Error(this.lineMsg() + "*pop on empty array: " + arrayName);
+    var value = store[arrayName + "_" + currentCount];
+    this.setVar(destVar, value);
+    store[countVar] = currentCount - 1;
+};
+
+Scene.prototype.skipForBody = function skipForBody(forIndent) {
+    var lines = this.lines;
+    var lineNum = this.lineNum + 1;
+    while (lineNum < lines.length) {
+        var line = lines[lineNum];
+        var trimmed = line.replace(/^\s+/, "");
+        if (!trimmed) { lineNum++; continue; }
+        var lineIndent = line.length - trimmed.length;
+        if (lineIndent <= forIndent && /^\*next\b/.test(trimmed)) {
+            this.lineNum = lineNum; // printLoop will increment past *next
+            return;
+        }
+        lineNum++;
+    }
+    throw new Error(this.lineMsg() + "*for has no matching *next");
+};
+
+// *for varname from min to max [step n]
+Scene.prototype["for"] = function scene_for(data) {
+    if (!data || !data.trim()) throw new Error(this.lineMsg() + "*for requires: varname from min to max [step n]");
+    var m = data.trim().match(/^(\w+)\s+from\s+(.+?)\s+to\s+(.+?)(?:\s+step\s+(.+))?$/i);
+    if (!m) throw new Error(this.lineMsg() + "*for syntax: varname from min to max [step n]: " + data);
+    var varname = m[1].toLowerCase();
+    var minVal = num(this.evaluateExpr(this.tokenizeExpr(m[2].trim())), this.lineNum+1, this.name);
+    var maxVal = num(this.evaluateExpr(this.tokenizeExpr(m[3].trim())), this.lineNum+1, this.name);
+    var stepVal = m[4] ? num(this.evaluateExpr(this.tokenizeExpr(m[4].trim())), this.lineNum+1, this.name) : 1;
+    if (stepVal === 0) throw new Error(this.lineMsg() + "*for step cannot be zero");
+
+    if (!this.temps.hasOwnProperty(varname) && !this.stats.hasOwnProperty(varname)) {
+        this.temps[varname] = minVal;
+    } else {
+        this.setVar(varname, minVal);
+    }
+
+    if (!this.temps._forStack) this.temps._forStack = [];
+
+    var forLine = this.lineNum;
+    var forIndent = this.indent;
+
+    var done = (stepVal > 0) ? (minVal > maxVal) : (minVal < maxVal);
+    if (done) {
+        this.skipForBody(forIndent);
+    } else {
+        this.temps._forStack.push({varname: varname, max: maxVal, step: stepVal, topLine: forLine, indent: forIndent, count: 0});
+    }
+};
+
+// *next varname
+Scene.prototype.next = function scene_next(data) {
+    if (!this.temps._forStack || !this.temps._forStack.length) {
+        throw new Error(this.lineMsg() + "*next without matching *for");
+    }
+    var frame = this.temps._forStack[this.temps._forStack.length - 1];
+    var varname = data ? data.trim().toLowerCase() : frame.varname;
+    if (varname && varname !== frame.varname) {
+        throw new Error(this.lineMsg() + "*next variable '" + varname + "' does not match *for variable '" + frame.varname + "'");
+    }
+    frame.count++;
+    if (frame.count > (this.temps._looplimit || 1000)) {
+        throw new Error(this.lineMsg() + "*for loop exceeded iteration limit");
+    }
+    var currentVal = num(this.getVar(frame.varname), this.lineNum+1, this.name);
+    var nextVal = currentVal + frame.step;
+    var done = (frame.step > 0) ? (nextVal > frame.max) : (nextVal < frame.max);
+    if (done) {
+        this.temps._forStack.pop();
+        // lineNum stays at *next; printLoop will advance to the line after
+    } else {
+        this.setVar(frame.varname, nextVal);
+        this.lineNum = frame.topLine; // printLoop's increment lands on the first body line
+    }
+};
+
+// *switch expr
+// endLine pushed to _switchStack so *case/*endswitch can find the boundary even when nested.
+Scene.prototype["switch"] = function scene_switch(data) {
+    if (!data || !data.trim()) throw new Error(this.lineMsg() + "*switch requires an expression");
+    var switchVal = this.evaluateExpr(this.tokenizeExpr(data.trim()));
+    var switchIndent = this.indent;
+    var lines = this.lines;
+    var lineNum = this.lineNum + 1;
+    var matchLine = -1;
+    var defaultLine = -1;
+    var endLine = -1;
+    var depth = 0;
+
+    while (lineNum < lines.length) {
+        var line = lines[lineNum];
+        var trimmed = line.replace(/^\s+/, "");
+        if (!trimmed) { lineNum++; continue; }
+        var lineIndent = line.length - trimmed.length;
+
+        if (lineIndent > switchIndent) { lineNum++; continue; }
+
+        var caseMatch = trimmed.match(/^\*case\s+([\s\S]+)$/i);
+        var isDefault = /^\*default\b/i.test(trimmed);
+        var isEndswitch = /^\*endswitch\b/i.test(trimmed);
+
+        if (isEndswitch && lineIndent <= switchIndent) {
+            endLine = lineNum;
+            break;
+        }
+        if (caseMatch && lineIndent === switchIndent && matchLine === -1) {
+            var caseVal = this.evaluateExpr(this.tokenizeExpr(caseMatch[1].trim()));
+            if (String(switchVal) === String(caseVal) || switchVal == caseVal) {
+                matchLine = lineNum + 1;
+            }
+        }
+        if (isDefault && lineIndent === switchIndent && defaultLine === -1) {
+            defaultLine = lineNum + 1;
+        }
+        lineNum++;
+    }
+
+    if (endLine === -1) throw new Error(this.lineMsg() + "*switch has no matching *endswitch");
+
+    if (!this.temps._switchStack) this.temps._switchStack = [];
+    this.temps._switchStack.push(endLine);
+
+    var bodyLine = matchLine !== -1 ? matchLine : defaultLine;
+    if (bodyLine === -1) {
+        this.temps._switchStack.pop();
+        this.lineNum = endLine;
+    } else {
+        this.lineNum = bodyLine - 1;
+    }
+};
+
+// *case val — during execution acts as break; jumps to *endswitch.
+Scene.prototype["case"] = function scene_case() {
+    if (!this.temps._switchStack || !this.temps._switchStack.length) {
+        throw new Error(this.lineMsg() + "*case without matching *switch");
+    }
+    var endLine = this.temps._switchStack[this.temps._switchStack.length - 1];
+    this.lineNum = endLine;
+};
+
+// *default — same break behavior as *case; jumps to *endswitch.
+Scene.prototype["default"] = function scene_default() {
+    if (!this.temps._switchStack || !this.temps._switchStack.length) {
+        throw new Error(this.lineMsg() + "*default without matching *switch");
+    }
+    var endLine = this.temps._switchStack[this.temps._switchStack.length - 1];
+    this.lineNum = endLine;
+};
+
+// *endswitch
+Scene.prototype.endswitch = function scene_endswitch() {
+    if (!this.temps._switchStack || !this.temps._switchStack.length) {
+        throw new Error(this.lineMsg() + "*endswitch without matching *switch");
+    }
+    this.temps._switchStack.pop();
 };
 
 Scene.initialCommands = {"create":1,"create_array":1,"scene_list":1,"title":1,"author":1,"comment":1,"achievement":1,"product":1,"ifid":1};
@@ -5059,5 +5312,6 @@ Scene.validCommands = {"comment":1, "goto":1, "gotoref":1, "label":1, "looplimit
     "bug":1,"link_button":1,"check_registration":1,"sound":1,"author":1,"gosub_scene":1,"achievement":1,
     "check_achievements":1,"redirect_scene":1,"print_discount":1,"purchase_discount":1,"track_event":1,
     "timer":1,"youtube":1,"product":1,"text_image":1,"ai":1,"params":1,"config":1,"ifid":1,
-    "page_break_advertisement":1, "finish_advertisement":1, "save_checkpoint": 1, "restore_checkpoint": 1
+    "page_break_advertisement":1, "finish_advertisement":1, "save_checkpoint": 1, "restore_checkpoint": 1,
+    "push":1,"pop":1,"for":1,"next":1,"switch":1,"case":1,"default":1,"endswitch":1
     };
