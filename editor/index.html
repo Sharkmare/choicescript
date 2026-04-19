@@ -924,6 +924,17 @@ editor.on('cursorActivity', () => {
   scheduleStatUpdate();
 });
 
+// Returns the deepest container whose [line, endLine] contains targetLine, or null.
+function containerForLine(items, targetLine) {
+  let best = null;
+  for (const item of items) {
+    if (item.line <= targetLine && targetLine <= item.endLine) {
+      if (!best || item.depth > best.depth) best = item;
+    }
+  }
+  return best;
+}
+
 editor.getWrapperElement().addEventListener('click', e => {
   const coords = { left: e.clientX, top: e.clientY };
   const pos    = editor.coordsChar(coords, 'window');
@@ -931,15 +942,33 @@ editor.getWrapperElement().addEventListener('click', e => {
   if (!tok.type || !tok.type.includes('cs-label-ref')) return;
 
   const target = tok.string.trim().toLowerCase();
-  const lines  = editor.getValue().split('\n');
+  const text   = editor.getValue();
+  const lines  = text.split('\n');
+
   for (let i = 0; i < lines.length; i++) {
     const m = lines[i].trimStart().match(/^\*label\s+(\S+)/i);
-    if (m && m[1].toLowerCase() === target) {
-      editor.setCursor({ line: i, ch: 0 });
-      editor.scrollIntoView({ line: i, ch: 0 }, 120);
-      editor.focus();
-      return;
+    if (!m || m[1].toLowerCase() !== target) continue;
+
+    // If currently scoped, check whether the destination is outside that scope.
+    if (selectedContainerLine) {
+      const items   = parseContainers(text);
+      const current = items.find(c => String(c.line) === selectedContainerLine);
+      const outside = !current || i < current.line || i > current.endLine;
+
+      if (outside) {
+        const dest = containerForLine(items, i);
+        if (dest) {
+          selectContainer(String(dest.line), dest.name);
+        } else {
+          selectContainer('', '(Full file)');
+        }
+      }
     }
+
+    editor.setCursor({ line: i, ch: 0 });
+    editor.scrollIntoView({ line: i, ch: 0 }, 120);
+    editor.focus();
+    return;
   }
 });
 
