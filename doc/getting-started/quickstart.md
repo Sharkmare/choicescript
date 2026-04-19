@@ -28,7 +28,7 @@ Open `web/mygame/index.html` in your browser. You will see the prose, two choice
 
 ## `*choice`
 
-`*choice` presents a set of options to the player. Each option starts with `#` and its body is indented one level deeper than the `#` line. Every option body **must** end with `*finish`, `*goto`, or `*goto_scene` — the engine will throw an error if a branch has no exit.
+`*choice` presents a set of options to the player. Each option starts with `#` and its body is indented one level deeper than the `#` line. Every option body **must** end with `*finish`, `*goto`, or `*goto_scene`; the engine will throw an error if a branch has no exit.
 
 ```
 *choice
@@ -57,7 +57,7 @@ You reach the end of the chapter.
 
 `*label` marks a jump target within the current scene. `*goto` jumps to it. Use them to loop back, skip sections, or converge branches.
 
-Every option in a `*choice` must exit — either with `*finish` or `*goto`. Here is a scene that loops until the player picks an exit:
+Every option in a `*choice` must exit, either with `*finish` or `*goto`. Here is a scene that loops until the player picks an exit:
 
 ```
 *label top
@@ -92,7 +92,7 @@ Nothing is there. Or so it seems.
 
 ## Indentation Rules
 
-- Use spaces **or** tabs — not both. Pick one and be consistent throughout the file.
+- Use spaces **or** tabs, not both. Pick one and be consistent throughout the file.
 - The engine is sensitive to inconsistent indentation. A file that mixes tabs and spaces will produce confusing errors.
 - Indentation only increases inside `*choice`, `*fake_choice`, and `*if` blocks. Increasing indent anywhere else is a syntax error.
 
@@ -109,4 +109,4 @@ Nothing is there. Or so it seems.
 
 - **Forgetting `*finish` at the end of a choice branch.** Every branch must have an exit. A branch with prose but no `*finish`, `*goto`, or `*goto_scene` will cause an error or silently fall through.
 - **Mixing tabs and spaces.** ChoiceScript counts indent characters literally. A tab is not equivalent to spaces. Use one or the other, never both in the same file.
-- **Using a label name that doesn't exist.** `*goto nowhere` will throw an error at runtime if there is no `*label nowhere` in the current scene. Label names are case-insensitive — the engine normalizes them to lowercase — but spelling must be exact.
+- **Using a label name that doesn't exist.** `*goto nowhere` will throw an error at runtime if there is no `*label nowhere` in the current scene. Label names are case-insensitive (the engine normalizes them to lowercase), but spelling must be exact.

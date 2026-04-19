@@ -1,0 +1,43 @@
+
+
+
+
+
+
+
+*comment = Container 1
+
+*comment You can  make a "container"
+*comment These can be ued by the editor to cope the view
+*comment to only this section specifically
+
+*comment == sub container 1
+
+*comment You can also add a sub containe ito your container
+*comment so that you dont have an infinitely long dropdown
+
+*comment === sub sub container 1
+
+*comment Btw depth is not limited, only liited by your bravery
+
+*comment ==== sub sub ssub container 1
+*comment No seriouly it just keeps oging
+
+*comment ===== sub sub sub sub container 1 
+*comment and going
+
+*comment ====== sub sub sub sub sub container 1
+*comment and going
+
+*comment ======= sub sub sub sub sub sub container 1
+*comment and going
+
+*comment = container 2
+
+
+
+
+*comment == sub container 2
+
+
+

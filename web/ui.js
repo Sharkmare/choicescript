@@ -3539,6 +3539,7 @@ window.onload=function() {
 
     if (map) {
       window.forcedScene = map.forcedScene;
+      window.forcedStats = map.forcedStats ? JSON.parse(decodeURIComponent(map.forcedStats)) : null;
       window.slot = map.slot;
       window.debug = map.debug;
       if (map.restart) {
@@ -3563,7 +3564,7 @@ window.onload=function() {
           }
         });
       } else if (map.forcedScene) {
-        safeCall(null, function() {loadAndRestoreGame(window.slot, window.forcedScene);});
+        safeCall(null, function() {loadAndRestoreGame(window.slot, window.forcedScene, window.forcedStats);});
       } else if (map.persistence) {
         var persistenceParts = map.persistence.split("|");
         if (persistenceParts.length == 2) {

@@ -47,7 +47,7 @@ ${greeting}, ${name}!
 *return
 ```
 
-Arguments are matched left to right. The variables created by `*params` are temporary (`*temp`) variables. They persist in the scene's temp scope after the subroutine returns — they are not automatically cleaned up. Do not rely on them being reset between calls to the same subroutine.
+Arguments are matched left to right. The variables created by `*params` are temporary (`*temp`) variables. They persist in the scene's temp scope after the subroutine returns; they are not automatically cleaned up. Do not rely on them being reset between calls to the same subroutine.
 
 ---
 

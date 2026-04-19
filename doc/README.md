@@ -1,12 +1,12 @@
 # ChoiceScript Documentation
 
-ChoiceScript is a plain-text scripting language for writing interactive fiction — branching stories where the reader makes choices that shape the outcome. Games are interpreted directly in the browser; no compilation step is needed.
+ChoiceScript is a plain-text scripting language for writing interactive fiction: branching stories where the reader makes choices that shape the outcome. Games are interpreted directly in the browser; no compilation step is needed.
 
 ---
 
 ## Quick Start
 
-New here? Start with the [Quickstart guide](getting-started/quickstart.md) — it walks you through a complete minimal scene from scratch.
+New here? Start with the [Quickstart guide](getting-started/quickstart.md). It walks you through a complete minimal scene from scratch.
 
 ---
 
@@ -30,7 +30,7 @@ New here? Start with the [Quickstart guide](getting-started/quickstart.md) — i
 
 Open `web/mygame/index.html` directly in a browser. Most modern browsers allow local file access for ChoiceScript without any extra setup.
 
-For a more reliable local development experience — especially if you use `*image` or other asset commands — run the bundled static server:
+For a more reliable local development experience (especially if you use `*image` or other asset commands), run the bundled static server:
 
 ```bash
 node serve.js
@@ -44,19 +44,19 @@ Then navigate to `http://localhost:8080/` in your browser.
 
 ChoiceScript ships with two automated test tools and a full unit-test suite.
 
-**Quicktest** — walks every branch of your game automatically and flags errors:
+**Quicktest**: walks every branch of your game automatically and flags errors.
 
 ```bash
 node quicktest.js
 ```
 
-**Randomtest** — stress-tests your game by making random choices many times over, catching runtime errors that only appear on unusual paths:
+**Randomtest**: stress-tests your game by making random choices many times over, catching runtime errors that only appear on unusual paths.
 
 ```bash
 node randomtest.js
 ```
 
-**Full engine test suite** — runs the engine's own unit tests. Run this if you modify `scene.js` or any core file:
+**Full engine test suite**: runs the engine's own unit tests. Run this if you modify `scene.js` or any core file.
 
 ```bash
 node tests/suite.js tests/qunit.js web/scene.js web/util.js headless.js tests/scenetest.js tests/dragontest.js tests/utiltest.js

@@ -44,7 +44,7 @@ Both the `*if` block and the `*else` block must terminate their own paths (with 
 
 ## `*elseif` / `*elsif`
 
-Chains multiple conditions. `*elseif` and `*elsif` are identical — use whichever you prefer.
+Chains multiple conditions. `*elseif` and `*elsif` are identical; use whichever you prefer.
 
 ```
 *if score > 80
@@ -109,7 +109,7 @@ Use `and`, `or`, and `not()` to combine conditions. Sub-expressions must be pare
 
 ```
 *if (score > 50) and (health > 0)
-  You survive — barely.
+  You survive, barely.
 
 *if (brave) or (cunning > 70)
   You find a way through.
@@ -118,7 +118,7 @@ Use `and`, `or`, and `not()` to combine conditions. Sub-expressions must be pare
   You press the attack.
 ```
 
-`not()` is a function, not a keyword — it takes its argument in parentheses.
+`not()` is a function, not a keyword. It takes its argument in parentheses.
 
 Do not chain without parentheses. The engine evaluates strictly left to right, so parentheses make precedence explicit.
 
@@ -141,7 +141,7 @@ Use `=` to compare a variable against a string literal.
 
 ## Boolean variables
 
-Declare with `*create` (in `startup.txt`) or `*temp`. Set with `*set`. Test with `*if` — no operator needed.
+Declare with `*create` (in `startup.txt`) or `*temp`. Set with `*set`. Test with `*if`; no operator needed.
 
 ```
 *set has_key true
@@ -160,4 +160,4 @@ Setting:
 *set flag false
 ```
 
-Never compare a boolean variable with `= true` — just use `*if flag` or `*if not(flag)`.
+Never compare a boolean variable with `= true`. Use `*if flag` or `*if not(flag)` instead.

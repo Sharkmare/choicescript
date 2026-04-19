@@ -867,6 +867,11 @@ function restoreGame(state, forcedScene, userRestored, forcedStats, forcedTemps)
     }
     if (!isStateValid(state)) {
         var startupScene = forcedScene ? forcedScene : _global.nav.getStartupScene();
+        if (forcedStats) {
+          for (var stat in forcedStats) {
+            _global.stats[stat] = forcedStats[stat];
+          }
+        }
         scene = new Scene(startupScene, _global.stats, _global.nav, {debugMode:_global.debug, secondaryMode:secondaryMode, saveSlot:saveSlot});
         trackEvent('game_start');
     } else {

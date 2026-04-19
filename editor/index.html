@@ -1,218 +1,1528 @@
-<html>
-<!-- TODO
-
-Test plan
-scroll width/height
-  copy/paste
-  typomatic
-tab insert
-multiline tab insert
-undo tab insert
-error handling
-
- -->
-<head><title>Basic ChoiceScript Editor</title>
-<script src="../web/util.js"></script>
-<script src="../headless.js"></script>
-<script src="../web/scene.js"></script>
-<script src="../web/navigator.js"></script>
-<script>window.version="DEVELOPMENT"</script>
-<script src="../web/mygame/mygame.js"></script>
-<script src="embeddable-autotester.js"></script>
-<script>
-function tryIt() {
-  window.highlight.style.display = "none";
-  try {
-    autotester(getContent(), null, "startup");
-    window.open("blankgame.html", "choicescript_testWindow");
-  } catch (e) {
-    console.log(e);
-    console.log(e.stack);
-    var x = e;
-    if (e.message) {
-      var match = e.message.match(/^line (\d+)/);
-      if (match) {
-        highlightLine(match[1]);
-      }
-    }
-    alert(x);
-  }
-}
-
-function highlightLine(num) {
-  window.highlight.style.display = "block";
-  highlight.style.top = (num*16+19) + "px";
-}
-function getContent() {
-  return text.value;
-}
-
-function changeTitle() {}
-</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ChoiceScript Editor</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/lint/lint.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/lint/lint.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/foldgutter.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/foldcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/foldgutter.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/indent-fold.min.js"></script>
 <style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
 body {
-  margin: 0;
-  padding: 0;
-  font-family: monospace;
-  font-size: 10pt;
-  background-color: #f0f0f0;
+  font-family: system-ui, -apple-system, sans-serif;
+  background: #1e1f29;
+  color: #f8f8f2;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
-#numbers {
-  background-image: url('line-numbers.png');
-  background-repeat:repeat-y;
-  padding: 12px 0 0 26px;
+
+/* ── Toolbar ── */
+#toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  background: #282a36;
+  border-bottom: 1px solid #44475a;
+  flex-shrink: 0;
+  min-height: 36px;
 }
-textarea {
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  height: 100%;
-  border: 0;
-  overflow: visible;
-  word-wrap: normal;
-  font-family: monospace;
-  font-size: 10pt;
-  line-height: 16px;
+
+#toolbar .logo {
+  font-weight: 700;
+  color: #bd93f9;
+  font-size: 14px;
+  letter-spacing: 1px;
+  margin-right: 4px;
 }
-#highlight {
+
+#scene-select {
+  background: #383a4a;
+  color: #f8f8f2;
+  border: 1px solid #44475a;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+}
+#scene-select:focus { outline: 1px solid #bd93f9; }
+
+.btn {
+  background: #44475a;
+  color: #f8f8f2;
+  border: none;
+  padding: 4px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background 0.15s;
+}
+.btn:hover { background: #6272a4; }
+.btn.primary { background: #6272a4; }
+.btn.primary:hover { background: #bd93f9; color: #282a36; }
+
+#save-indicator {
+  font-size: 11px;
+  color: #6272a4;
+  margin-left: 4px;
+}
+#save-indicator.saving { color: #f1fa8c; }
+#save-indicator.saved { color: #50fa7b; }
+#save-indicator.error { color: #ff5555; }
+
+#cursor-info {
+  margin-left: auto;
+  font-size: 11px;
+  color: #6272a4;
+}
+
+#container-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+#container-display {
+  background: #383a4a;
+  color: #f8f8f2;
+  border: 1px solid #44475a;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+  max-width: 180px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: none;
+}
+#container-display:hover { border-color: #bd93f9; }
+#container-display.open  { border-color: #bd93f9; outline: 1px solid #bd93f9; }
+
+#container-panel {
   display: none;
   position: absolute;
-  width: 25px;
+  top: calc(100% + 4px);
   left: 0;
-  top: 0;
-  background-color: red;
-  opacity: 0.5;
+  width: 260px;
+  max-height: 420px;
+  overflow-y: auto;
+  background: #282a36;
+  border: 1px solid #44475a;
+  border-radius: 4px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+  z-index: 200;
+  padding: 4px 0;
+}
+#container-panel.open { display: block; }
+
+.co-item {
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #f8f8f2;
+  gap: 4px;
+}
+.co-item:hover { background: #383a4a; }
+.co-item.co-full { color: #6272a4; font-size: 13px; padding: 5px 10px; }
+.co-item.co-full:hover { color: #f8f8f2; background: #383a4a; }
+
+.co-toggle {
+  flex-shrink: 0;
+  width: 14px;
+  font-size: 9px;
+  color: #6272a4;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.1s;
+  text-align: center;
+}
+.co-toggle.expanded { color: #bd93f9; }
+
+.co-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+.co-children { }
+.co-children.collapsed > .co-item,
+.co-children.collapsed > .co-children { display: none; }
+
+.toolbar-sep {
+  width: 1px;
+  height: 18px;
+  background: #44475a;
+  flex-shrink: 0;
+}
+
+.cs-container-header {
+  background: rgba(189,147,249,0.07) !important;
+}
+
+.cs-fold-placeholder {
+  display: inline-block;
+  padding: 0 6px;
+  background: #383a4a;
+  border: 1px solid #44475a;
+  border-radius: 3px;
+  color: #6272a4;
+  font-size: 11px;
+  cursor: pointer;
+}
+.cs-fold-placeholder:hover { border-color: #bd93f9; color: #bd93f9; }
+
+/* ── Main layout ── */
+#main {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ── Editor pane ── */
+#editor-pane {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 200px;
+  overflow: hidden;
+}
+
+.CodeMirror {
+  flex: 1;
+  height: 100%;
+  font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.CodeMirror-scroll { height: 100%; }
+
+/* ChoiceScript syntax colours on dracula base */
+.cm-cs-command-flow  { color: #ff79c6; font-weight: bold; }
+.cm-cs-command-nav   { color: #bd93f9; }
+.cm-cs-command-var   { color: #8be9fd; }
+.cm-cs-command-other { color: #50fa7b; }
+.cm-cs-command-ext   { color: #ffb86c; font-weight: bold; }
+.cm-cs-unknown       { color: #ff5555; text-decoration: underline wavy #ff5555; }
+.cm-cs-label-def     { color: #f1fa8c; font-weight: bold; }
+.cm-cs-label-ref     { color: #f1fa8c; }
+.cm-cs-option        { color: #50fa7b; font-style: italic; }
+.cm-cs-interpolation { color: #8be9fd; }
+.cm-cs-stat-op       { color: #ffb86c; font-weight: bold; }
+
+/* ── Error panel ── */
+#error-panel {
+  background: #3d1010;
+  color: #ff5555;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-family: monospace;
+  display: none;
+  flex-shrink: 0;
+  border-top: 1px solid #ff5555;
+  white-space: pre-wrap;
+}
+#error-panel.visible { display: block; }
+
+/* ── Resizer ── */
+#resizer {
+  width: 4px;
+  background: #44475a;
+  cursor: col-resize;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+#resizer:hover, #resizer.dragging { background: #bd93f9; }
+
+/* ── Preview pane ── */
+#preview-pane {
+  width: 420px;
+  min-width: 180px;
+  max-width: 70vw;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid #44475a;
+  overflow: hidden;
+}
+
+#preview-tabs {
+  display: flex;
+  background: #282a36;
+  border-bottom: 1px solid #44475a;
+  flex-shrink: 0;
+}
+
+.ptab {
+  padding: 6px 16px;
+  font-size: 12px;
+  color: #6272a4;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  user-select: none;
+  transition: color 0.15s;
+}
+.ptab:hover { color: #f8f8f2; }
+.ptab.active { color: #f8f8f2; border-bottom-color: #bd93f9; }
+
+#preview-frame {
+  flex: 1;
+  border: none;
+  background: #fff;
+  display: block;
+}
+
+/* ── Stats panel ── */
+#stats-panel {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: none;
+  flex-direction: column;
+  gap: 0;
+}
+#stats-panel.visible { display: flex; }
+
+.sp-section {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #6272a4;
+  margin-bottom: 8px;
+  margin-top: 4px;
+}
+
+.sp-empty {
+  color: #44475a;
+  font-size: 12px;
+  font-style: italic;
+  margin-bottom: 12px;
+}
+
+/* Choice selector */
+.cs-block {
+  margin-bottom: 10px;
+}
+.cs-label {
+  font-size: 11px;
+  color: #8be9fd;
+  margin-bottom: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cs-label span { color: #6272a4; font-size: 10px; }
+.cs-select {
+  width: 100%;
+  background: #383a4a;
+  color: #f8f8f2;
+  border: 1px solid #44475a;
+  padding: 3px 6px;
+  border-radius: 3px;
+  font-size: 11px;
+  cursor: pointer;
+}
+.cs-select:focus { outline: 1px solid #bd93f9; }
+
+/* Stat bars */
+.sp-divider {
+  border: none;
+  border-top: 1px solid #44475a;
+  margin: 10px 0;
+}
+
+.stat-row {
+  margin-bottom: 8px;
+}
+.stat-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  margin-bottom: 3px;
+}
+.stat-name { color: #f8f8f2; }
+.stat-val  { color: #6272a4; }
+.stat-bar {
+  height: 4px;
+  background: #383a4a;
+  border-radius: 2px;
+  overflow: hidden;
+}
+.stat-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.25s ease;
+}
+.stat-fill.opposed { background: linear-gradient(90deg, #bd93f9, #ff79c6); }
+.stat-fill.percent { background: #ffb86c; }
+.stat-fill.integer { background: #50fa7b; }
+.stat-fill.wound   { background: #ff5555; }
+
+/* Opposed pair labels */
+.opposed-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  color: #44475a;
+  margin-top: 1px;
+}
+
+/* ── Status bar ── */
+#statusbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2px 10px;
+  background: #44475a;
+  font-size: 11px;
+  color: #f8f8f2;
+  flex-shrink: 0;
 }
 </style>
-<script>
-function keyDown(event) {
-  if (event.keyCode == 9) {
-    function moveSelection(i) {
-      if (document.selection) {
-        range.move('character', ss + i);
-        range.select();
-      } else {
-        text.selectionStart = ss + i;
-        text.selectionEnd = se + i;
-      }
-    }
-    if (event.preventDefault) event.preventDefault();
-    event.returnValue = false;
-    var tab = "    ";
-    // via http://ajaxian.com/archives/handling-tabs-in-textareas
-    var ss = text.selectionStart;
-    var se = text.selectionEnd;
-    if( document.selection ){
-        // The current selection
-        var range = document.selection.createRange();
-        // We'll use this as a 'dummy'
-        var stored_range = range.duplicate();
-        // Select all text
-        stored_range.moveToElementText( text );
-        // Now move 'dummy' end point to end point of original range
-        stored_range.setEndPoint( 'EndToEnd', range );
-        // Now we can calculate start and end points
-        ss = stored_range.text.length - range.text.length;
-        se = ss + range.text.length;
-    }
-    // Special case of multi line selection
-    if (ss != se && text.value.slice(ss,se).indexOf("\n") != -1) {
-        // In case selection was not of entire lines (e.g. selection begins in the middle of a line)
-        // we ought to tab at the beginning as well as at the start of every following line.
-        var pre = text.value.slice(0,ss);
-        var sel = text.value.slice(ss,se).replace(/\n/g,"\n"+tab);
-        var post = text.value.slice(se,text.value.length);
-        text.value = pre.concat(tab).concat(sel).concat(post);
-        
-        moveSelection(tab.length);
-    }
-           
-    // "Normal" case (no selection or selection on one line only)
-    else {
-        text.value = text.value.slice(0,ss).concat(tab).concat(text.value.slice(ss,text.value.length));
-        moveSelection(tab.length);
-    }
-  }
-}
-
-function change() {
-  var scrollHeight = text.scrollHeight;
-  var bodyHeight = document.body.clientHeight;
-  if (scrollHeight < bodyHeight) {
-    text.style.height = bodyHeight + "px";
-  } else {
-    text.style.height = scrollHeight + "px";
-  }
-  var scrollWidth = text.scrollWidth;
-  var bodyWidth = document.body.clientWidth;
-  if (scrollWidth < bodyWidth) {
-    text.style.width = bodyWidth + "px";
-  } else {
-    text.style.width = scrollWidth + "px";
-  }
-}
-
-function bindEvent(target, eventName, fun) {
-  if (target.addEventListener) {
-    target.addEventListener(eventName, fun, true);
-  } else {
-    target.attachEvent("on" + eventName, function(){ fun(event); });
-  } 
-}
-
-window.onload = function() {
-  window.text = document.getElementById("t");
-  window.highlight = document.getElementById("highlight");
-  bindEvent(text, "keydown", keyDown);
-  bindEvent(text, "change", change);
-  bindEvent(text, "keypress", change);
-  bindEvent(text, "keyup", change);
-  change();
-}
-</script>
 </head>
 <body>
-<div id="highlight">&nbsp;</div>
-<button onclick="tryIt();">try it!</button> <label for="debug"><input id="debug" type="checkbox" > Debug</label>
-</div><div id="numbers"><textarea nowrap wrap="off" id="t">*title My First ChoiceScript Game
 
-*create leadership 50
-*create strength 50
+<div id="toolbar">
+  <span class="logo">CS</span>
+  <select id="scene-select" title="Switch scene"></select>
+  <button class="btn" id="btn-new-scene" title="New scene file">＋</button>
+  <span class="toolbar-sep"></span>
+  <div id="container-wrap" title="Jump to container section">
+    <div id="container-display"><span id="container-label">(Full file)</span> <span id="container-arrow" style="font-size:9px;opacity:0.6">▾</span></div>
+    <div id="container-panel"></div>
+  </div>
+  <button class="btn" id="btn-preview-container" title="Preview this section with simulated stats" style="display:none">▶ Here</button>
+  <button class="btn primary" id="btn-preview">▶ Preview</button>
+  <span id="save-indicator"></span>
+  <span id="cursor-info">Ln 1, Col 1</span>
+</div>
 
-Your majesty, your people are starving in the streets, and threaten revolution.
-Our enemies to the west are weak, but they threaten soon to invade.  What will you do?
+<div id="main">
+  <div id="editor-pane">
+    <textarea id="cm-target"></textarea>
+    <div id="error-panel"></div>
+  </div>
+  <div id="resizer"></div>
+  <div id="preview-pane">
+    <div id="preview-tabs">
+      <div class="ptab active" data-tab="game">Game Preview</div>
+      <div class="ptab" data-tab="stats">Stats Preview</div>
+    </div>
+    <iframe id="preview-frame" src="about:blank" sandbox="allow-scripts allow-same-origin allow-forms allow-modals"></iframe>
+    <div id="stats-panel">
+      <div class="sp-section">Stat-Affecting Choices Before Cursor</div>
+      <div id="choice-list"></div>
+      <hr class="sp-divider">
+      <div class="sp-section">Resulting Stats at Cursor</div>
+      <div id="stat-bars"></div>
+    </div>
+  </div>
+</div>
 
-*choice
-  #Make pre-emptive war on the western lands.
-    If you can seize their territory, your kingdom will flourish.  But your army's
-    morale is low and the kingdom's armory is empty.  How will you win the war?
-    *choice
-      #Drive the peasants like slaves; if we work hard enough, we'll win.
-        Unfortunately, morale doesn't work like that.  Your army soon turns against you
-        and the kingdom falls to the western barbarians.
-        *finish
-      #Appoint charismatic knights and give them land, peasants, and resources.
-        Your majesty's people are eminently resourceful.  Your knights win the day,
-        but take care: they may soon demand a convention of parliament.
-        *finish
-      #Steal food and weapons from the enemy in the dead of night.
-        A cunning plan.  Soon your army is a match for the westerners; they choose
-        not to invade for now, but how long can your majesty postpone the inevitable?
-        *finish
-  #Beat swords to plowshares and trade food to the westerners for protection.
-    The westerners have you at the point of a sword.  They demand unfair terms
-    from you.
-    *choice
-      #Accept the terms for now.
-        Eventually, the barbarian westerners conquer you anyway, destroying their
-        bread basket, and the entire region starves.
-        *finish
-      #Threaten to salt our fields if they don't offer better terms.
-        They blink.  Your majesty gets a fair price for wheat.
-        *finish
-  #Abdicate the throne. I have clearly mismanaged this kingdom!
-    The kingdom descends into chaos, but you manage to escape with your own hide.
-    Perhaps in time you can return to restore order to this fair land.
-    *finish</textarea></div>
+<div id="statusbar">
+  <span id="status-left">Ready</span>
+  <span id="status-right"></span>
+</div>
+
+<script>
+'use strict';
+
+const STAT_VARS = new Set(['brutality','cunning','disdain','infamy','wealth','wounds','blasphemy']);
+const FAIRMATH_VARS = new Set(['brutality','cunning','disdain','infamy']);
+const OPPOSED_PAIRS = [
+  {name:'brutality', lo:'Finesse', hi:'Brutality'},
+  {name:'cunning',   lo:'Honor',   hi:'Cunning'},
+  {name:'disdain',   lo:'Vigilance', hi:'Disdain'},
+];
+const INTEGER_STATS = ['wealth','wounds','blasphemy'];
+
+const CMD_FLOW   = new Set(['if','elseif','else','endif','choice','fake_choice','for','switch','case','default','endswitch']);
+const CMD_NAV    = new Set(['goto','goto_scene','goto_random_scene','gotoref','finish','ending','return','abort','bug','gosub','gosub_scene','redirect_scene']);
+const CMD_VAR    = new Set(['create','temp','set','setref','rand','input_text','input_number','print','create_array','temp_array','delete_array','params']);
+const CMD_EXT    = new Set(['for','next','switch','case','default','endswitch','push','pop']);
+const CMD_OTHER  = new Set(['label','stat_chart','achievement','achieve','check_achievements','page_break','line_break','comment','image','text_image','sound','link','link_button','title','author','scene_list','looplimit','reset','restart','script','save_game','restore_game','save_checkpoint','restore_checkpoint','selectable_if','hide_reuse','disable_reuse','allow_reuse']);
+
+const ALL_CMDS = [...CMD_FLOW,...CMD_NAV,...CMD_VAR,...CMD_OTHER,...CMD_EXT,'next'].sort();
+
+const FUNCTIONS = [
+  {name:'floor',     sig:'floor(n)',      doc:'Round down to nearest integer'},
+  {name:'ceil',      sig:'ceil(n)',       doc:'Round up to nearest integer'},
+  {name:'abs',       sig:'abs(n)',        doc:'Absolute value'},
+  {name:'min',       sig:'min(a, b)',     doc:'Smaller of two values'},
+  {name:'max',       sig:'max(a, b)',     doc:'Larger of two values'},
+  {name:'lowercase', sig:'lowercase(s)',  doc:'Convert to lowercase'},
+  {name:'uppercase', sig:'uppercase(s)',  doc:'Convert to uppercase'},
+  {name:'round',     sig:'round(n)',      doc:'Round to nearest integer'},
+  {name:'length',    sig:'length(s)',     doc:'String length'},
+  {name:'not',       sig:'not(v)',        doc:'Boolean inverse'},
+  {name:'log',       sig:'log(n)',        doc:'Base-10 logarithm'},
+];
+
+// Cmds where the next token is a label reference
+const LABEL_REF_CMDS = new Set(['goto','gosub','label']);
+
+CodeMirror.defineMode('choicescript', function() {
+  const labelRefAfter = new Set(['goto','gosub','label']);
+  const labelDefCmd   = 'label';
+
+  return {
+    startState() {
+      return {
+        inComment: false,
+        afterCmd: null,
+        expectLabel: false,
+      };
+    },
+
+    token(stream, state) {
+      if (stream.sol()) {
+        state.inComment = false;
+        // Don't reset afterCmd/expectLabel here; token may span mid-line
+      }
+
+      if (state.inComment) {
+        stream.skipToEnd();
+        return null; // already styled via startState path below
+      }
+
+      if (stream.eatSpace()) return null;
+
+      const ch = stream.peek();
+
+      if (stream.match(/\$!{0,2}\{/)) {
+        let depth = 1;
+        while (!stream.eol()) {
+          const c = stream.next();
+          if (c === '{') depth++;
+          if (c === '}') { if (--depth === 0) break; }
+        }
+        return 'cs-interpolation';
+      }
+
+      if (stream.match('@{')) {
+        let depth = 1;
+        while (!stream.eol()) {
+          const c = stream.next();
+          if (c === '{') depth++;
+          if (c === '}') { if (--depth === 0) break; }
+        }
+        return 'cs-interpolation';
+      }
+
+      if (ch === '*') {
+        stream.next();
+        stream.eatWhile(/\w/);
+        const full = stream.current(); // includes the *
+        const cmd = full.slice(1).toLowerCase();
+
+        if (cmd === 'comment') {
+          state.inComment = true;
+          stream.skipToEnd();
+          return 'comment';
+        }
+
+        state.afterCmd = cmd;
+        state.expectLabel = labelRefAfter.has(cmd);
+
+        if (CMD_EXT.has(cmd) || cmd === 'next') return 'cs-command-ext';
+        if (CMD_FLOW.has(cmd))  return 'cs-command-flow';
+        if (CMD_NAV.has(cmd))   return 'cs-command-nav';
+        if (CMD_VAR.has(cmd))   return 'cs-command-var';
+        if (CMD_OTHER.has(cmd)) return 'cs-command-other';
+        return 'cs-unknown';
+      }
+
+      if (ch === '#' && stream.indentation() === stream.column()) {
+        stream.next();
+        stream.skipToEnd();
+        return 'cs-option';
+      }
+
+      if (ch === '%') {
+        if (stream.match('%+') || stream.match('%-')) {
+          return 'cs-stat-op';
+        }
+      }
+
+      if (ch === '"') {
+        stream.next();
+        while (!stream.eol()) {
+          const c = stream.next();
+          if (c === '\\') { stream.next(); }
+          else if (c === '"') { break; }
+        }
+        return 'string';
+      }
+
+      if (/\d/.test(ch)) {
+        stream.eatWhile(/[\d.]/);
+        return 'number';
+      }
+
+      if (/[\w]/.test(ch)) {
+        stream.eatWhile(/\w/);
+        const word = stream.current();
+
+        if (state.expectLabel) {
+          state.expectLabel = false;
+          return state.afterCmd === labelDefCmd ? 'cs-label-def' : 'cs-label-ref';
+        }
+
+        if (FUNCTIONS.some(f => f.name === word.toLowerCase()) && stream.peek() === '(') {
+          return 'builtin';
+        }
+
+        return 'variable';
+      }
+
+      if (/[+\-*/=<>!&|]/.test(ch)) {
+        stream.eatWhile(/[+\-*/=<>!&|]/);
+        return 'operator';
+      }
+
+      stream.next();
+      return null;
+    }
+  };
+});
+
+CodeMirror.defineMIME('text/x-choicescript', 'choicescript');
+
+// Register token styles with CM's stylesheet
+(function() {
+  const s = document.createElement('style');
+  s.textContent = `
+    .cm-cs-command-flow  { color: #ff79c6; font-weight: bold; }
+    .cm-cs-command-nav   { color: #bd93f9; }
+    .cm-cs-command-var   { color: #8be9fd; }
+    .cm-cs-command-other { color: #50fa7b; }
+    .cm-cs-command-ext   { color: #ffb86c; font-weight: bold; }
+    .cm-cs-unknown       { color: #ff5555; text-decoration: underline; }
+    .cm-cs-label-def     { color: #f1fa8c; font-weight: bold; }
+    .cm-cs-label-ref     { color: #f1fa8c; }
+    .cm-cs-option        { color: #50fa7b; font-style: italic; }
+    .cm-cs-interpolation { color: #8be9fd; }
+    .cm-cs-stat-op       { color: #ffb86c; font-weight: bold; }
+  `;
+  document.head.appendChild(s);
+})();
+
+let currentScene   = '';
+let startingStats  = {brutality:50,cunning:50,disdain:50,infamy:0,wealth:5000,wounds:0,blasphemy:0};
+let sceneSelections = {};  // sceneName → {choiceIdx → optionIdx}
+let saveTimer      = null;
+let statUpdateTimer = null;
+let scenes         = [];
+
+const BASE = window.location.origin;
+
+async function apiGet(path) {
+  const r = await fetch(BASE + path);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
+}
+
+async function apiPost(path, body) {
+  const r = await fetch(BASE + path, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
+}
+
+const editor = CodeMirror.fromTextArea(document.getElementById('cm-target'), {
+  mode: 'choicescript',
+  theme: 'dracula',
+  lineNumbers: true,
+  styleActiveLine: true,
+  matchBrackets: true,
+  indentUnit: 2,
+  tabSize: 2,
+  indentWithTabs: false,
+  lineWrapping: false,
+  foldGutter: true,
+  gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter'],
+  foldOptions: {rangeFinder: CodeMirror.fold.indent},
+  extraKeys: {
+    'Tab': cm => cm.execCommand('indentMore'),
+    'Shift-Tab': cm => cm.execCommand('indentLess'),
+    'Ctrl-Space': cm => CodeMirror.showHint(cm, csHint),
+    'Ctrl-S': () => saveNow(),
+    'Ctrl-Q': cm => cm.foldCode(cm.getCursor()),
+  },
+});
+
+editor.setSize('100%', '100%');
+
+function extractLabels(text) {
+  const labels = [];
+  for (const line of text.split('\n')) {
+    const m = line.trim().match(/^\*label\s+(\w+)/i);
+    if (m) labels.push(m[1]);
+  }
+  return labels;
+}
+
+function extractVars(text) {
+  const vars = new Set([...STAT_VARS]);
+  for (const line of text.split('\n')) {
+    const m = line.trim().match(/^\*(?:create|temp)\s+(\w+)/i);
+    if (m) vars.add(m[1].toLowerCase());
+  }
+  return [...vars].sort();
+}
+
+function csHint(cm) {
+  const cur     = cm.getCursor();
+  const line    = cm.getLine(cur.line);
+  const token   = cm.getTokenAt(cur);
+  const before  = line.slice(0, cur.ch);
+  const text    = cm.getValue();
+
+  // After * → command list
+  const cmdMatch = before.match(/\*(\w*)$/);
+  if (cmdMatch) {
+    const prefix = cmdMatch[1].toLowerCase();
+    const list   = ALL_CMDS.filter(c => c.startsWith(prefix));
+    return {
+      list: list.map(c => ({text: c, displayText: '*' + c})),
+      from: CodeMirror.Pos(cur.line, cur.ch - cmdMatch[1].length),
+      to: cur,
+    };
+  }
+
+  // After *goto / *gosub → label names
+  const navMatch = before.match(/\*(?:goto|gosub)\s+(\w*)$/i);
+  if (navMatch) {
+    const prefix = navMatch[1].toLowerCase();
+    const labels = extractLabels(text).filter(l => l.toLowerCase().startsWith(prefix));
+    return {
+      list: labels,
+      from: CodeMirror.Pos(cur.line, cur.ch - navMatch[1].length),
+      to: cur,
+    };
+  }
+
+  // After *set / *if / *create / *temp → variable names + functions
+  const varCmdMatch = before.match(/\*(?:set|if|elseif|create|temp)\s+(\w*)$/i);
+  if (varCmdMatch) {
+    const prefix  = varCmdMatch[1].toLowerCase();
+    const varList = extractVars(text).filter(v => v.startsWith(prefix));
+    return {
+      list: varList,
+      from: CodeMirror.Pos(cur.line, cur.ch - varCmdMatch[1].length),
+      to: cur,
+    };
+  }
+
+  // Mid-expression identifier → vars + functions
+  const identMatch = before.match(/\b(\w+)$/);
+  if (identMatch) {
+    const prefix = identMatch[1].toLowerCase();
+    const vars   = extractVars(text).filter(v => v.startsWith(prefix));
+    const fns    = FUNCTIONS.filter(f => f.name.startsWith(prefix)).map(f => ({
+      text: f.name,
+      displayText: f.sig,
+      hint(cm, data, completion) {
+        cm.replaceRange(f.name + '()', data.from, data.to);
+        cm.setCursor({line: data.from.line, ch: data.from.ch + f.name.length + 1});
+      },
+    }));
+    const list = [...fns, ...vars];
+    if (!list.length) return;
+    return {
+      list,
+      from: CodeMirror.Pos(cur.line, cur.ch - identMatch[1].length),
+      to: cur,
+    };
+  }
+}
+
+let errorMark = null;
+
+function showError(msg, lineNum) {
+  const panel = document.getElementById('error-panel');
+  panel.textContent = msg;
+  panel.classList.add('visible');
+
+  if (errorMark) { errorMark.clear(); errorMark = null; }
+
+  if (lineNum != null && lineNum > 0) {
+    const line = lineNum - 1;
+    if (line < editor.lineCount()) {
+      errorMark = editor.markText(
+        {line, ch: 0},
+        {line, ch: editor.getLine(line).length || 0},
+        {className: 'cm-error-line'}
+      );
+      editor.scrollIntoView({line, ch: 0}, 80);
+    }
+  }
+}
+
+function clearError() {
+  document.getElementById('error-panel').classList.remove('visible');
+  if (errorMark) { errorMark.clear(); errorMark = null; }
+}
+
+// Inject error line style
+(function() {
+  const s = document.createElement('style');
+  s.textContent = `.cm-error-line { background: rgba(255,85,85,0.18); }`;
+  document.head.appendChild(s);
+})();
+
+function refreshPreview() {
+  const frame = document.getElementById('preview-frame');
+  const scene = currentScene === 'startup' ? '' : '&forcedScene=' + encodeURIComponent(currentScene);
+  frame.src = BASE + '/web/mygame/?t=' + Date.now() + scene;
+}
+
+document.getElementById('btn-preview').addEventListener('click', () => {
+  saveNow().then(refreshPreview);
+});
+
+document.getElementById('btn-preview-container').addEventListener('click', () => {
+  saveNow().then(previewContainer);
+});
+
+document.getElementById('btn-new-scene').addEventListener('click', async () => {
+  const raw = window.prompt('New scene name (letters, numbers, hyphens, underscores):');
+  if (raw === null) return;
+  const name = raw.trim().replace(/\.txt$/i, '');
+  if (!name) return;
+  if (!/^[\w-]+$/.test(name)) {
+    alert(`Invalid name "${name}". Use only letters, numbers, hyphens, and underscores.`);
+    return;
+  }
+  if (scenes.includes(name)) {
+    alert(`"${name}.txt" already exists. Pick a different name.`);
+    return;
+  }
+  try {
+    await apiPost('/api/scene/' + name, {content: ''});
+    await loadSceneList();
+    const sel = document.getElementById('scene-select');
+    sel.value = name;
+    await loadScene(name);
+  } catch (e) {
+    alert('Could not create scene: ' + e.message);
+  }
+});
+
+const indicator = document.getElementById('save-indicator');
+
+function setSaveState(state, msg) {
+  indicator.textContent = msg || '';
+  indicator.className   = state;
+}
+
+async function saveNow() {
+  if (!currentScene) return;
+  setSaveState('saving', '● saving…');
+  try {
+    await apiPost('/api/scene/' + currentScene, {content: editor.getValue()});
+    setSaveState('saved', '✓ saved');
+    clearError();
+    setTimeout(() => setSaveState('', ''), 2000);
+  } catch (e) {
+    setSaveState('error', '✗ ' + e.message);
+  }
+}
+
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  setSaveState('saving', '● unsaved');
+  saveTimer = setTimeout(saveNow, 1200);
+}
+
+editor.on('change', () => {
+  scheduleSave();
+  scheduleStatUpdate();
+});
+
+async function loadScene(name) {
+  try {
+    const {content} = await apiGet('/api/scene/' + name);
+    currentScene = name;
+    editor.setValue(content);
+    editor.clearHistory();
+    clearError();
+    applyContainerScope('');
+    selectedContainerLine = '';
+    expandedContainers.clear();
+    document.getElementById('container-label').textContent = '(Full file)';
+    syncContainerDropdown();
+    document.title = name + ' — ChoiceScript Editor';
+    document.getElementById('status-left').textContent = name + '.txt';
+    updateStatsPanel();
+  } catch (e) {
+    document.getElementById('status-left').textContent = 'Failed to load ' + name;
+  }
+}
+
+async function loadSceneList() {
+  const sel = document.getElementById('scene-select');
+  try {
+    scenes = await apiGet('/api/scenes');
+    sel.innerHTML = '';
+    scenes.forEach(name => {
+      const opt = document.createElement('option');
+      opt.value       = name;
+      opt.textContent = name + '.txt';
+      sel.appendChild(opt);
+    });
+
+    if (scenes.includes('startup')) {
+      try {
+        const {content} = await apiGet('/api/scene/startup');
+        startingStats = parseStartingStats(content);
+      } catch (_) {}
+    }
+
+    const initial = scenes[0] || '';
+    if (initial) {
+      sel.value = initial;
+      await loadScene(initial);
+    }
+  } catch (e) {
+    sel.innerHTML = '<option>— server not found —</option>';
+    document.getElementById('status-left').textContent = 'Cannot reach server. Is serve.js running?';
+  }
+}
+
+document.getElementById('scene-select').addEventListener('change', e => {
+  loadScene(e.target.value);
+});
+
+editor.on('cursorActivity', () => {
+  const pos = editor.getCursor();
+  document.getElementById('cursor-info').textContent =
+    `Ln ${pos.line + 1}, Col ${pos.ch + 1}`;
+  scheduleStatUpdate();
+});
+
+document.querySelectorAll('.ptab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.ptab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    const which = tab.dataset.tab;
+    document.getElementById('preview-frame').style.display = which === 'game'  ? 'block' : 'none';
+    const sp = document.getElementById('stats-panel');
+    sp.style.display = which === 'stats' ? 'flex' : 'none';
+    if (which === 'stats') updateStatsPanel();
+  });
+});
+
+(function() {
+  const resizer = document.getElementById('resizer');
+  const preview = document.getElementById('preview-pane');
+  let dragging  = false;
+  let startX, startW;
+
+  resizer.addEventListener('mousedown', e => {
+    dragging = true;
+    startX   = e.clientX;
+    startW   = preview.offsetWidth;
+    resizer.classList.add('dragging');
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  });
+
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const delta = startX - e.clientX;
+    const newW  = Math.max(180, Math.min(window.innerWidth * 0.7, startW + delta));
+    preview.style.width = newW + 'px';
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (!dragging) return;
+    dragging = false;
+    resizer.classList.remove('dragging');
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  });
+})();
+
+function parseStartingStats(startupText) {
+  const stats = {brutality:50,cunning:50,disdain:50,infamy:0,wealth:5000,wounds:0,blasphemy:0};
+  for (const line of startupText.split('\n')) {
+    const m = line.trim().match(/^\*create\s+(\w+)\s+(.+)/i);
+    if (m) {
+      const v = m[1].toLowerCase();
+      if (STAT_VARS.has(v)) {
+        const n = parseFloat(m[2]);
+        if (!isNaN(n)) stats[v] = n;
+      }
+    }
+  }
+  return stats;
+}
+
+// Tracks which branch the cursor is in to filter to the path leading here.
+function parseStatChoices(text, cursorLine) {
+  const lines    = text.split('\n');
+  const results  = [];
+
+  parseBlock(lines, 0, cursorLine, -1, results);
+  return results;
+}
+
+function getIndent(line) {
+  const m = line.match(/^(\s*)/);
+  return m ? m[1].length : 0;
+}
+
+function parseBlock(lines, startLine, cursorLine, blockIndent, out) {
+  let i = startLine;
+  while (i < cursorLine) {
+    const raw     = lines[i] || '';
+    const trimmed = raw.trim();
+    if (!trimmed) { i++; continue; }
+    const indent = getIndent(raw);
+
+    // Stop if we've left the block we were called to parse
+    if (blockIndent >= 0 && indent <= blockIndent && i > startLine) break;
+
+    if (/^\*(?:choice|fake_choice)\b/i.test(trimmed)) {
+      const choiceIndent = indent;
+      const choice = extractChoice(lines, i, cursorLine, choiceIndent);
+      if (choice.options.some(o => o.statSets.length > 0)) {
+        out.push(choice);
+      }
+      const cursorBranch = choice.options.find(o =>
+        o.bodyStart <= cursorLine && cursorLine < o.bodyEnd
+      );
+      if (cursorBranch) {
+        parseBlock(lines, cursorBranch.bodyStart, cursorLine, choiceIndent + 1, out);
+      }
+      i = choice.endLine;
+    } else {
+      i++;
+    }
+  }
+}
+
+function extractChoice(lines, choiceLine, limitLine, choiceIndent) {
+  const options = [];
+  let i = choiceLine + 1;
+  let endLine = i;
+
+  while (i < limitLine && i < lines.length) {
+    const raw     = lines[i] || '';
+    const trimmed = raw.trim();
+    if (!trimmed) { i++; continue; }
+    const indent = getIndent(raw);
+
+    // Stop when we return to choice level or above (but allow *if etc as guards)
+    if (indent <= choiceIndent && !/^\*(?:if|elseif|else|hide_reuse|disable_reuse|allow_reuse|selectable_if)\b/i.test(trimmed)) {
+      break;
+    }
+
+    if (trimmed.startsWith('#')) {
+      const optText   = trimmed.slice(1).trim();
+      const optIndent = indent;
+      const bodyStart = i + 1;
+      i++;
+
+      while (i < limitLine && i < lines.length) {
+        const bl     = lines[i] || '';
+        const bt     = bl.trim();
+        if (!bt) { i++; continue; }
+        if (getIndent(bl) <= optIndent) break;
+        i++;
+      }
+      const bodyEnd  = i;
+      const statSets = extractStatSets(lines, bodyStart, bodyEnd);
+      options.push({text: optText, bodyStart, bodyEnd, statSets});
+      endLine = i;
+    } else {
+      i++;
+    }
+  }
+
+  return {choiceLine, endLine: Math.max(endLine, i), options};
+}
+
+function extractStatSets(lines, start, end) {
+  const sets = [];
+  for (let i = start; i < end && i < lines.length; i++) {
+    const t = (lines[i] || '').trim();
+    const m = t.match(/^\*set\s+(\w+)\s+(.*)/i);
+    if (m) {
+      const v = m[1].toLowerCase();
+      if (STAT_VARS.has(v)) sets.push({var: v, expr: m[2].trim()});
+    }
+  }
+  return sets;
+}
+
+function fairAdd(v, n) {
+  return Math.min(100, Math.round(v + (100 - v) * n / 100));
+}
+function fairSub(v, n) {
+  return Math.max(0, Math.round(v - v * n / 100));
+}
+
+function applySet(stats, varName, expr) {
+  const cur = stats[varName] !== undefined ? stats[varName] : 0;
+
+  const fairPlus  = expr.match(/^%\+(\d+)/);
+  const fairMinus = expr.match(/^%-(\d+)/);
+  const addMatch  = expr.match(/^\+(\d+)/);
+  const subMatch  = expr.match(/^-(\d+)/);
+  const numMatch  = expr.match(/^(\d+)$/);
+
+  if (fairPlus)  stats[varName] = fairAdd(cur, parseInt(fairPlus[1]));
+  else if (fairMinus) stats[varName] = fairSub(cur, parseInt(fairMinus[1]));
+  else if (addMatch)  stats[varName] = cur + parseInt(addMatch[1]);
+  else if (subMatch)  stats[varName] = cur - parseInt(subMatch[1]);
+  else if (numMatch)  stats[varName] = parseInt(numMatch[1]);
+  // Complex expressions: skip (can't evaluate without full engine)
+}
+
+function simulateStats(choices, selections, starting) {
+  const stats = Object.assign({}, starting);
+  choices.forEach((choice, ci) => {
+    const selIdx = selections[ci] !== undefined ? selections[ci] : 0;
+    const option = choice.options[selIdx];
+    if (!option) return;
+    option.statSets.forEach(s => applySet(stats, s.var, s.expr));
+  });
+  return stats;
+}
+
+function scheduleStatUpdate() {
+  clearTimeout(statUpdateTimer);
+  statUpdateTimer = setTimeout(updateStatsPanel, 150);
+}
+
+function updateStatsPanel() {
+  const sp = document.getElementById('stats-panel');
+  if (!sp.classList.contains('visible') && sp.style.display !== 'flex') return;
+
+  const cursorLine = editor.getCursor().line;
+  const text       = editor.getValue();
+  const choices    = parseStatChoices(text, cursorLine);
+
+  if (!sceneSelections[currentScene]) sceneSelections[currentScene] = {};
+  const sels = sceneSelections[currentScene];
+
+  const cl = document.getElementById('choice-list');
+  cl.innerHTML = '';
+
+  if (choices.length === 0) {
+    const empty = document.createElement('div');
+    empty.className   = 'sp-empty';
+    empty.textContent = 'No stat-affecting choices before cursor.';
+    cl.appendChild(empty);
+  } else {
+    choices.forEach((choice, ci) => {
+      const block = document.createElement('div');
+      block.className = 'cs-block';
+
+      const label = document.createElement('div');
+      label.className = 'cs-label';
+      const snippet = getChoiceContext(text, choice.choiceLine);
+      label.innerHTML = snippet
+        ? `<span>Choice ${ci+1}:</span> ${esc(snippet)}`
+        : `<span>Choice ${ci+1}</span>`;
+      block.appendChild(label);
+
+      const sel = document.createElement('select');
+      sel.className = 'cs-select';
+
+      // Only options that have stat effects get distinct labels; others just show the text
+      choice.options.forEach((opt, oi) => {
+        const o = document.createElement('option');
+        o.value = oi;
+        const marker = opt.statSets.length ? ` [${opt.statSets.map(s => s.var).join(', ')}]` : '';
+        o.textContent = opt.text + marker;
+        sel.appendChild(o);
+      });
+
+      sel.value = sels[ci] !== undefined ? sels[ci] : 0;
+
+      sel.addEventListener('change', () => {
+        sels[ci] = parseInt(sel.value);
+        renderStatBars(simulateStats(choices, sels, startingStats));
+      });
+
+      block.appendChild(sel);
+      cl.appendChild(block);
+    });
+  }
+
+  renderStatBars(simulateStats(choices, sels, startingStats));
+}
+
+function getChoiceContext(text, choiceLine) {
+  const lines = text.split('\n');
+  for (let i = choiceLine - 1; i >= Math.max(0, choiceLine - 5); i--) {
+    const t = (lines[i] || '').trim();
+    if (t && !t.startsWith('*') && !t.startsWith('#')) {
+      return t.length > 48 ? t.slice(0, 45) + '…' : t;
+    }
+  }
+  return '';
+}
+
+function esc(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function renderStatBars(stats) {
+  const el = document.getElementById('stat-bars');
+  el.innerHTML = '';
+
+  OPPOSED_PAIRS.forEach(p => {
+    const v = Math.max(0, Math.min(100, stats[p.name] || 0));
+    el.appendChild(makeBar(p.name, v, 100, 'opposed', p.lo, p.hi));
+  });
+
+  el.appendChild(makeBar('infamy', Math.max(0,Math.min(100,stats.infamy||0)), 100, 'percent'));
+
+  // Integers: normalize for display only
+  const wealthMax = Math.max(stats.wealth || 0, startingStats.wealth || 5000, 1);
+  el.appendChild(makeBar('wealth', stats.wealth||0, wealthMax, 'integer'));
+  el.appendChild(makeBar('wounds', Math.max(0, Math.min(5, stats.wounds||0)), 5, 'wound'));
+  el.appendChild(makeBar('blasphemy', stats.blasphemy||0, 3, 'wound'));
+}
+
+function makeBar(name, value, max, kind, loLabel, hiLabel) {
+  const row = document.createElement('div');
+  row.className = 'stat-row';
+
+  const hdr = document.createElement('div');
+  hdr.className = 'stat-header';
+
+  const nm = document.createElement('span');
+  nm.className   = 'stat-name';
+  nm.textContent = name.charAt(0).toUpperCase() + name.slice(1);
+  const vl = document.createElement('span');
+  vl.className   = 'stat-val';
+  vl.textContent = kind === 'opposed' ? value + '/100' : value;
+
+  hdr.appendChild(nm); hdr.appendChild(vl);
+  row.appendChild(hdr);
+
+  const bar = document.createElement('div');
+  bar.className = 'stat-bar';
+  const fill = document.createElement('div');
+  fill.className = 'stat-fill ' + kind;
+  fill.style.width = Math.round(value / max * 100) + '%';
+  bar.appendChild(fill);
+  row.appendChild(bar);
+
+  if (loLabel || hiLabel) {
+    const lbl = document.createElement('div');
+    lbl.className = 'opposed-labels';
+    lbl.innerHTML = `<span>${esc(loLabel||'')}</span><span>${esc(hiLabel||'')}</span>`;
+    row.appendChild(lbl);
+  }
+
+  return row;
+}
+
+document.querySelectorAll('.ptab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    if (tab.dataset.tab === 'stats') updateStatsPanel();
+  });
+});
+
+// ── Container markers ──────────────────────────────────────────────────────
+
+// Matches *comment =, ==, ===, ==== … depth is the = count, name is everything after
+const CONTAINER_RE = /^\*comment\s+(=+)\s*(.+)/i;
+
+// Left-border color per depth level; cycles when depth exceeds palette length
+const DEPTH_COLORS = ['#bd93f9','#8be9fd','#50fa7b','#ffb86c','#ff79c6','#f1fa8c'];
+function depthColor(d) { return DEPTH_COLORS[(d - 1) % DEPTH_COLORS.length]; }
+
+let containerMarks        = [];
+let containerLineClasses  = [];
+let selectedContainerLine = '';
+// Keyed by line number string so toggle state survives re-syncs within the same scene
+let expandedContainers    = new Set();
+
+function parseContainers(text) {
+  const rawLines = text.split('\n');
+  const lastLine = rawLines.length - 1;
+  const items    = [];
+
+  for (let i = 0; i < rawLines.length; i++) {
+    const m = rawLines[i].match(CONTAINER_RE);
+    if (m) items.push({depth: m[1].length, name: m[2].trim(), line: i, endLine: lastLine});
+  }
+
+  // A container ends before the next container at the same or shallower depth
+  for (let i = 0; i < items.length; i++) {
+    for (let j = i + 1; j < items.length; j++) {
+      if (items[j].depth <= items[i].depth) {
+        items[i].endLine = items[j].line - 1;
+        break;
+      }
+    }
+  }
+
+  return items;
+}
+
+function buildTree(items) {
+  const roots = [];
+  const stack = [];
+
+  items.forEach(item => {
+    const node = {item, children: []};
+    while (stack.length && stack[stack.length - 1].item.depth >= item.depth) stack.pop();
+    if (stack.length === 0) {
+      roots.push(node);
+    } else {
+      stack[stack.length - 1].children.push(node);
+    }
+    stack.push(node);
+  });
+
+  return roots;
+}
+
+function selectContainer(lineKey, label) {
+  selectedContainerLine = lineKey;
+  document.getElementById('container-label').textContent = label || '(Full file)';
+  document.getElementById('container-panel').classList.remove('open');
+  document.getElementById('container-display').classList.remove('open');
+  document.getElementById('btn-preview-container').style.display = lineKey ? 'inline-block' : 'none';
+  applyContainerScope(lineKey);
+}
+
+async function previewContainer() {
+  if (!selectedContainerLine) return;
+
+  const text  = editor.getValue();
+  const items = parseContainers(text);
+  const item  = items.find(c => String(c.line) === selectedContainerLine);
+  if (!item) return;
+
+  const lines     = text.split('\n');
+  const startLine = item.line;
+  const endLine   = item.endLine;
+
+  const choices = parseStatChoices(text, startLine);
+  const sels    = sceneSelections[currentScene] || {};
+  const stats   = simulateStats(choices, sels, startingStats);
+
+  const statsForUrl = {};
+  for (const [k, v] of Object.entries(stats)) {
+    statsForUrl[k] = Math.round(Number(v) || 0);
+  }
+
+  const content = lines.slice(startLine, endLine + 1).join('\n');
+  try {
+    await apiPost('/api/scene/_container_preview', {content});
+  } catch (e) {
+    alert('Could not write preview scene: ' + e.message);
+    return;
+  }
+
+  document.querySelectorAll('.ptab').forEach(t => t.classList.remove('active'));
+  document.querySelector('.ptab[data-tab="game"]').classList.add('active');
+  document.getElementById('preview-frame').style.display = 'block';
+  document.getElementById('stats-panel').style.display   = 'none';
+
+  const frame = document.getElementById('preview-frame');
+  const statsParam = encodeURIComponent(JSON.stringify(statsForUrl));
+  frame.src = `${BASE}/web/mygame/?t=${Date.now()}&forcedScene=_container_preview&forcedStats=${statsParam}`;
+}
+
+function syncContainerDropdown() {
+  const prev  = selectedContainerLine;
+  const items = parseContainers(editor.getValue());
+  const panel = document.getElementById('container-panel');
+
+  panel.innerHTML = '';
+
+  const fullItem = document.createElement('div');
+  fullItem.className = 'co-item co-full';
+  fullItem.textContent = '(Full file)';
+  fullItem.addEventListener('click', () => selectContainer('', '(Full file)'));
+  panel.appendChild(fullItem);
+
+  function renderNode(node, parentEl) {
+    const {item, children} = node;
+    const key   = String(item.line);
+    const color = depthColor(item.depth);
+    const indent = (item.depth - 1) * 14;
+    const isExpanded = expandedContainers.has(key);
+
+    const row = document.createElement('div');
+    row.className = 'co-item';
+    row.style.paddingLeft = (8 + indent) + 'px';
+    row.style.color = color;
+
+    const toggle = document.createElement('span');
+    toggle.className = 'co-toggle' + (children.length ? (isExpanded ? ' expanded' : '') : '');
+    toggle.textContent = children.length ? (isExpanded ? '▾' : '▸') : '◦';
+    row.appendChild(toggle);
+
+    const label = document.createElement('span');
+    label.className = 'co-label';
+    label.textContent = item.name;
+    row.appendChild(label);
+
+    label.addEventListener('click', e => {
+      e.stopPropagation();
+      selectContainer(key, item.name);
+    });
+
+    if (children.length) {
+      toggle.addEventListener('click', e => {
+        e.stopPropagation();
+        if (expandedContainers.has(key)) {
+          expandedContainers.delete(key);
+        } else {
+          expandedContainers.add(key);
+        }
+        syncContainerDropdown();
+      });
+      row.addEventListener('click', () => selectContainer(key, item.name));
+    } else {
+      row.addEventListener('click', () => selectContainer(key, item.name));
+    }
+
+    parentEl.appendChild(row);
+
+    if (children.length) {
+      const childWrap = document.createElement('div');
+      childWrap.className = 'co-children' + (isExpanded ? '' : ' collapsed');
+      children.forEach(child => renderNode(child, childWrap));
+      parentEl.appendChild(childWrap);
+    }
+  }
+
+  const tree = buildTree(items);
+  // Auto-expand depths 1 and 2 on first render; preserved if user manually collapsed them
+  items.forEach(item => {
+    if (item.depth <= 2) {
+      const key = String(item.line);
+      if (!expandedContainers.has(key)) expandedContainers.add(key);
+    }
+  });
+  tree.forEach(node => renderNode(node, panel));
+
+  // Depth-colored left border applied via inline style; addLineClass alone can't carry color
+  containerLineClasses.forEach(({line}) => {
+    editor.removeLineClass(line, 'wrap', 'cs-container-header');
+  });
+  containerLineClasses = [];
+  items.forEach(item => {
+    editor.addLineClass(item.line, 'wrap', 'cs-container-header');
+    const el = editor.getLineHandle(item.line);
+    if (el && el.wrapClass !== undefined) {
+      // rAF needed because CM hasn't written the DOM element yet at this point
+      requestAnimationFrame(() => {
+        const lineEl = editor.getWrapperElement()
+          .querySelector(`.CodeMirror-code > div:nth-child(${item.line + 1})`);
+        if (lineEl) {
+          lineEl.style.borderLeft = `${Math.max(2, 5 - item.depth)}px solid ${depthColor(item.depth)}`;
+        }
+      });
+    }
+    containerLineClasses.push(item);
+  });
+
+  // If the previously selected container was renamed/deleted, reset to full file
+  if (prev && !items.some(c => String(c.line) === prev)) {
+    selectedContainerLine = '';
+    document.getElementById('container-label').textContent = '(Full file)';
+    applyContainerScope('');
+  }
+}
+
+function makeFoldWidget(label) {
+  const el = document.createElement('span');
+  el.className   = 'cs-fold-placeholder';
+  el.textContent = ` ··· ${label} ··· `;
+  return el;
+}
+
+function applyContainerScope(lineKey) {
+  containerMarks.forEach(m => m.clear());
+  containerMarks = [];
+
+  if (!lineKey) return;
+
+  const text  = editor.getValue();
+  const lines = text.split('\n');
+  const items = parseContainers(text);
+  const item  = items.find(c => String(c.line) === lineKey);
+  if (!item) return;
+
+  const startLine = item.line;
+  const endLine   = item.endLine;
+
+  if (startLine > 0) {
+    containerMarks.push(editor.markText(
+      {line: 0,             ch: 0},
+      {line: startLine - 1, ch: lines[startLine - 1].length},
+      {collapsed: true, replacedWith: makeFoldWidget(`${startLine} lines above`), inclusiveLeft: true}
+    ));
+  }
+
+  const lastLine = editor.lineCount() - 1;
+  if (endLine < lastLine) {
+    containerMarks.push(editor.markText(
+      {line: endLine + 1, ch: 0},
+      {line: lastLine,    ch: lines[lastLine].length},
+      {collapsed: true, replacedWith: makeFoldWidget(`${lastLine - endLine} lines below`), inclusiveRight: true}
+    ));
+  }
+
+  editor.scrollIntoView({line: startLine, ch: 0}, 80);
+}
+
+document.getElementById('container-display').addEventListener('click', () => {
+  const display = document.getElementById('container-display');
+  const panel   = document.getElementById('container-panel');
+  const open    = panel.classList.toggle('open');
+  display.classList.toggle('open', open);
+});
+
+document.addEventListener('click', e => {
+  const wrap = document.getElementById('container-wrap');
+  if (!wrap.contains(e.target)) {
+    document.getElementById('container-panel').classList.remove('open');
+    document.getElementById('container-display').classList.remove('open');
+  }
+});
+
+let containerSyncTimer = null;
+editor.on('change', () => {
+  clearTimeout(containerSyncTimer);
+  containerSyncTimer = setTimeout(syncContainerDropdown, 400);
+});
+
+loadSceneList();
+</script>
 </body>
 </html>

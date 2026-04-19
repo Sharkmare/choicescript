@@ -6,7 +6,7 @@
 
 ## The Stats Screen
 
-The stats screen is accessible from the in-game menu at any time. Its contents are defined entirely in `choicescript_stats.txt`. Every ChoiceScript game must include this file — the engine will error if it is missing.
+The stats screen is accessible from the in-game menu at any time. Its contents are defined entirely in `choicescript_stats.txt`. Every ChoiceScript game must include this file. The engine will error if it is missing.
 
 ---
 
@@ -24,7 +24,7 @@ Defines the rows that appear on the stats screen. Each row type controls how a v
 
 ### `opposed_pair` syntax
 
-The variable name goes on the `opposed_pair` line. The two label names go on the next two indented lines — high-value label first, low-value label second:
+The variable name goes on the `opposed_pair` line. The two label names go on the next two indented lines: high-value label first, low-value label second.
 
 ```
 *stat_chart
@@ -48,7 +48,7 @@ Optional definitions: each label may have a further-indented definition line bel
 
 ---
 
-## `*achievement` — Declaring Achievements
+## `*achievement`: Declaring Achievements
 
 Achievements must be declared in `startup.txt` before they can be awarded. Place all `*achievement` declarations together near the top of the file.
 
@@ -82,7 +82,7 @@ The two description lines are required. The first appears when the achievement i
 
 ---
 
-## `*achieve` — Awarding Achievements
+## `*achieve`: Awarding Achievements
 
 Award an achievement at the moment a condition is met.
 
@@ -100,7 +100,7 @@ Syntax: `*achieve id`
 
 ## `*check_achievements`
 
-Forces a refresh of the achievements display. Rarely needed — the engine updates automatically on screen open. Use if you award multiple achievements in rapid succession and need the UI to reflect them immediately.
+Forces a refresh of the achievements display. Rarely needed, as the engine updates automatically on screen open. Use if you award multiple achievements in rapid succession and need the UI to reflect them immediately.
 
 ```
 *check_achievements

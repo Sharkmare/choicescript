@@ -100,9 +100,8 @@ SceneNavigator.prototype.loadAchievements = function(achievementArray) {
 
 SceneNavigator.prototype.loadProducts = function(productArray, purchaseMap) {
     if (!productArray && !purchaseMap) return;
+    if (!productArray) productArray = [];
     this.products = {};
-    // Bug fix: was `i < productArray` (always false for multi-item arrays due to
-    // type coercion of array to NaN) — should be productArray.length.
     for (let i = 0; i < productArray.length; i++) {
         this.products[productArray[i]] = {};
     }

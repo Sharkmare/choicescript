@@ -4,9 +4,9 @@
 
 ---
 
-## `*set` — Assign or Update a Variable
+## `*set`: Assign or Update a Variable
 
-`*set` changes the value of a variable. The right-hand side is an expression — a literal value, another variable name, or an arithmetic formula.
+`*set` changes the value of a variable. The right-hand side is an expression: a literal value, another variable name, or an arithmetic formula.
 
 ```
 *set syntax: *set varname expression
@@ -48,9 +48,9 @@ This shorthand only works when the operator is the very first character of the e
 
 ---
 
-## `*setref` — Set a Variable by Name
+## `*setref`: Set a Variable by Name
 
-`*setref` assigns a value to a variable whose **name** is stored in another variable. This allows dynamic dispatch — useful when you have several similar variables and want to pick one at runtime.
+`*setref` assigns a value to a variable whose **name** is stored in another variable. This allows dynamic dispatch, useful when you have several similar variables and want to pick one at runtime.
 
 ```
 *setref syntax: *setref name_variable value
@@ -65,7 +65,7 @@ After these two lines, `courage` is `30`. `stat_name` still holds the string `"c
 
 ---
 
-## Reading Variables in Prose — `${}`
+## Reading Variables in Prose: `${}`
 
 Wrap a variable name in `${}` to substitute its value inline in prose.
 
@@ -83,8 +83,8 @@ The substitution happens at render time. If `score` is `42`, the player sees "Yo
 
 Two modifier forms adjust the case of a substituted value:
 
-- `$!{varname}` — capitalizes the first letter of the value.
-- `$!!{varname}` — converts the entire value to ALL CAPS.
+- `$!{varname}`: capitalizes the first letter of the value.
+- `$!!{varname}`: converts the entire value to ALL CAPS.
 
 ```
 *create title "dragon slayer"
@@ -101,7 +101,7 @@ The crowd chants: DRAGON SLAYER!
 
 ---
 
-## `*print` — Legacy Variable Output
+## `*print`: Legacy Variable Output
 
 `*print` outputs the value of a variable as a line of prose. It predates `${}` substitution and is rarely needed in modern scenes.
 
@@ -109,11 +109,11 @@ The crowd chants: DRAGON SLAYER!
 *print score
 ```
 
-Prefer `${score}` embedded in prose over `*print` — it gives you more control over formatting and context.
+Prefer `${score}` embedded in prose over `*print`; it gives you more control over formatting and context.
 
 ---
 
-## Inline Conditionals — `@{}`
+## Inline Conditionals: `@{}`
 
 `@{}` substitutes different text depending on a condition or a variable's value.
 
@@ -133,7 +133,7 @@ If `alive` is `true`, the player sees "You are alive." If false, "You are dead."
 
 The variable's value is used directly as a 1-based index into the options. If `score` is `1`, the player sees "Very low." If `score` is `5`, "Very High."
 
-The value must be a **whole integer** in range. If it is below 1, above the number of options, or a non-integer decimal, the engine throws a runtime error — there is no clamping. Ensure the index is always valid before using `@{}`.
+The value must be a **whole integer** in range. If it is below 1, above the number of options, or a non-integer decimal, the engine throws a runtime error; there is no clamping. Ensure the index is always valid before using `@{}`.
 
 There is no automatic mapping from a range (like 0–100). You must compute the index explicitly. For example, `@{round(score/25) ...}` would map a 0–100 value to a 4-bucket index, but only if the result is always 1–4.
 
@@ -141,7 +141,7 @@ The options are separated by `|`.
 
 ---
 
-## `*rand` — Random Number
+## `*rand`: Random Number
 
 `*rand` sets a variable to a random integer between `min` and `max`, inclusive.
 
@@ -158,7 +158,7 @@ After `*rand die_roll 1 6`, `die_roll` is a random integer from 1 to 6.
 
 ---
 
-## `*input_text` — Player Text Input
+## `*input_text`: Player Text Input
 
 `*input_text` pauses the game and prompts the player to type a value. The result is stored in the named variable.
 
@@ -175,7 +175,7 @@ You will be known as ${player_name}.
 
 ---
 
-## `*input_number` — Player Number Input
+## `*input_number`: Player Number Input
 
 `*input_number` prompts the player to type a number and validates that it falls within a specified range.
 

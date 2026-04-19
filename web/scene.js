@@ -1810,6 +1810,11 @@ Scene.prototype.parseOptions = function parseOptions(startIndent, choicesRemaini
             this.rollbackLineCoverage();
             continue;
         }
+        // Skip *comment lines regardless of indentation before the indent guard fires.
+        if (/^\s*\*comment\b/i.test(line)) {
+            this.rollbackLineCoverage();
+            continue;
+        }
         var indent = this.getIndent(line);
         if (nextIndent === null || nextIndent === undefined) {
             // initialize nextIndent with whatever indentation the line turns out to be

@@ -10,7 +10,7 @@ ChoiceScript has two variable scopes: **permanent** and **temporary**. Understan
 
 **Permanent variables** (`*create`) live for the entire game. They are initialized in `startup.txt`, persist across scenes, and are included in saved-game state.
 
-**Temporary variables** (`*temp`) live for a single scene. They are initialized when the scene begins and are gone the moment it ends — whether via `*finish`, `*goto_scene`, or a sub-routine return.
+**Temporary variables** (`*temp`) live for a single scene. They are initialized when the scene begins and are gone the moment it ends (whether via `*finish`, `*goto_scene`, or a sub-routine return).
 
 ```
 *create score 0          (lives forever)
@@ -40,7 +40,7 @@ If a `*temp` variable has the same name as a `*create` variable, the temp **shad
 You have ${gold} gold.
 ```
 
-Here, the player sees "You have 999 gold" — but the permanent `gold` variable is still `1000`. The `*set` wrote to the temp.
+Here, the player sees "You have 999 gold", but the permanent `gold` variable is still `1000`. The `*set` wrote to the temp.
 
 To expose the permanent variable again within the same scene, delete the temp:
 
@@ -73,7 +73,7 @@ If you use `*script` to write custom JavaScript inside a scene, you can access t
   temps.local_flag = true;
 ```
 
-This is an advanced feature. Prefer `*set` for all normal variable manipulation — `*script` bypasses the engine's error checking.
+This is an advanced feature. Prefer `*set` for all normal variable manipulation; `*script` bypasses the engine's error checking.
 
 ---
 
@@ -84,10 +84,10 @@ Temporary variables start fresh at the beginning of each scene. Their initializa
 | Event | Effect on temps |
 |---|---|
 | Scene starts | All `*temp` declarations run; temps from the previous scene are gone |
-| `*goto label` (same scene) | Temps are **not** reset — you remain in the same scene |
-| `*gosub label` | Temps are **shared** — the subroutine sees the same temp scope as the caller |
+| `*goto label` (same scene) | Temps are **not** reset (you remain in the same scene) |
+| `*gosub label` | Temps are **shared**: the subroutine sees the same temp scope as the caller |
 | `*finish` | Scene ends; all temps are destroyed |
 | `*goto_scene othername` | Scene ends; all temps are destroyed |
 | `*gosub_scene` | A new temp scope is created for the subscene; the caller's temps are preserved and restored on return |
 
-The key rule: **scene boundary = temp reset.** Within a single scene — including jumps with `*goto` and calls with `*gosub` — temps survive.
+The key rule: **scene boundary = temp reset.** Within a single scene (including jumps with `*goto` and calls with `*gosub`), temps survive.

@@ -6,9 +6,9 @@ Variables in ChoiceScript are either **permanent** (survive the whole game) or *
 
 ---
 
-## `*create` — Permanent Variables
+## `*create`: Permanent Variables
 
-`*create` declares a permanent variable. **All `*create` commands must appear in `startup.txt`** — the engine will error if you try to create a permanent variable in any other scene.
+`*create` declares a permanent variable. **All `*create` commands must appear in `startup.txt`**; the engine will error if you try to create a permanent variable in any other scene.
 
 ```
 *create syntax: *create varname value
@@ -27,7 +27,7 @@ Permanent variables persist across scenes and are saved with the player's progre
 
 ---
 
-## `*temp` — Scene-Local Variables
+## `*temp`: Scene-Local Variables
 
 `*temp` declares a variable that exists only for the duration of the current scene. It is destroyed when the scene ends (via `*finish`, `*goto_scene`, or any cross-scene jump).
 
@@ -35,7 +35,7 @@ Permanent variables persist across scenes and are saved with the player's progre
 *temp syntax: *temp varname [value]
 ```
 
-The initial value is optional — if omitted, the variable starts as `null`. You can declare a temp anywhere in a scene, not just at the top.
+The initial value is optional; if omitted, the variable starts as `null`. You can declare a temp anywhere in a scene, not just at the top.
 
 ```
 *temp roll 0
@@ -47,7 +47,7 @@ Temps are useful for intermediate calculations and scene-specific flags you don'
 
 ---
 
-## `*create_array` — Permanent Arrays
+## `*create_array`: Permanent Arrays
 
 `*create_array` declares a numbered set of permanent variables. It must be in `startup.txt` alongside regular `*create` commands.
 
@@ -73,7 +73,7 @@ Access individual slots with `inventory_1`, `inventory_2`, etc. Use `inventory_c
 
 ---
 
-## `*temp_array` — Scene-Local Arrays
+## `*temp_array`: Scene-Local Arrays
 
 `*temp_array` works exactly like `*create_array` but the variables are scene-local and disappear at the end of the scene.
 
@@ -89,7 +89,7 @@ Creates `scores_1`, `scores_2`, `scores_3` (all `0`) and `scores_count` (`3`), a
 
 ---
 
-## `*delete` — Remove a Temporary Variable
+## `*delete`: Remove a Temporary Variable
 
 `*delete` removes a temporary variable. This is mainly useful when you have a temp that shadows a permanent variable and you want to expose the permanent again (see [Variable Scope](scope.md)).
 
@@ -108,7 +108,7 @@ After `*delete gold`, reads of `gold` will go to the permanent `gold` variable d
 
 ---
 
-## `*delete_array` — Remove a Temporary Array
+## `*delete_array`: Remove a Temporary Array
 
 `*delete_array` removes a temporary array and its count variable.
 
@@ -123,7 +123,7 @@ This deletes `scores_1`, `scores_2`, `scores_3`, and `scores_count`.
 ## Variable Naming Rules
 
 - Lowercase letters, digits, and underscores only.
-- Must start with a letter — not a digit or underscore.
+- Must start with a letter, not a digit or underscore.
 - Variable names are **case-insensitive** when used in expressions and `*set` commands. `Gold`, `gold`, and `GOLD` all refer to the same variable.
 - Avoid names that shadow ChoiceScript built-ins (e.g., `choice_`, `param_`).
 
