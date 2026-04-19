@@ -23,7 +23,7 @@ Every array command follows this same convention: `arrayname_1` through `arrayna
 
 ## Declaring Arrays
 
-### `*create_array` — Permanent Array
+### `*create_array`: Permanent Array
 
 Declared in `startup.txt`. Persists for the entire game session.
 
@@ -33,11 +33,11 @@ Declared in `startup.txt`. Persists for the entire game session.
 
 Syntax: `*create_array name length default_value`
 
-- `name` — base name; elements become `name_1`, `name_2`, etc.
-- `length` — number of slots to create (must be a literal integer).
-- `default_value` — initial value assigned to every slot.
+- `name`: base name; elements become `name_1`, `name_2`, etc.
+- `length`: number of slots to create (must be a literal integer).
+- `default_value`: initial value assigned to every slot.
 
-### `*temp_array` — Scene-Local Array
+### `*temp_array`: Scene-Local Array
 
 Declared anywhere in a scene file. Destroyed when the scene exits.
 
@@ -84,11 +84,11 @@ Use the `*for` extension to walk every element.
 
 ---
 
-## Dynamic Arrays — `*push` and `*pop` [EXT]
+## Dynamic Arrays: `*push` and `*pop` [EXT]
 
 Standard `*create_array` arrays have a fixed size. `*push` and `*pop` let you append and remove elements at runtime.
 
-### `*push` — Append a Value
+### `*push`: Append a Value
 
 The count variable must exist before the first push.
 
@@ -109,7 +109,7 @@ inventory_count = 2
 
 Syntax: `*push arrayname value`
 
-### `*pop` — Remove and Return the Last Element
+### `*pop`: Remove and Return the Last Element
 
 ```
 *temp item ""
@@ -135,7 +135,7 @@ Syntax: `*pop arrayname destvar`
 
 ---
 
-## Removing a Temporary Array — `*delete_array`
+## Removing a Temporary Array: `*delete_array`
 
 Destroys a `*temp_array` before the scene ends. Useful when you need to reuse the name or free memory in a long scene.
 
@@ -145,4 +145,4 @@ Destroys a `*temp_array` before the scene ends. Useful when you need to reuse th
 
 Syntax: `*delete_array name`
 
-`*delete_array` works on both temporary and permanent arrays. Deleting a permanent array removes all its element variables and count variable for the rest of the game session — the data cannot be recovered without a full game restart. Use with care on permanent arrays.
+`*delete_array` works on both temporary and permanent arrays. Deleting a permanent array removes all its element variables and count variable for the rest of the game session; the data cannot be recovered without a full game restart. Use with care on permanent arrays.

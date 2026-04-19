@@ -31,7 +31,7 @@ Standard arithmetic for numeric variables.
 *set total (base + bonus) - penalty
 ```
 
-Do not write `a + b + c` without parentheses — the engine will not evaluate it as expected.
+Do not write `a + b + c` without parentheses; the engine will not evaluate it as expected.
 
 ---
 
@@ -73,7 +73,7 @@ x %+ y  →  floor(x + (100 - x) * (y / 100))   capped at 99
 x %- y  →  ceil(x - x * (y / 100))             floored at 1
 ```
 
-### Example — `brutality %+ 20`
+### Example: `brutality %+ 20`
 
 | Starting value | Result |
 |---|---|
@@ -82,7 +82,7 @@ x %- y  →  ceil(x - x * (y / 100))             floored at 1
 | 80 | 80 + (100 − 80) × 0.20 = **84** |
 | 95 | 95 + (100 − 95) × 0.20 = **99** (capped) |
 
-### Example — `brutality %- 20`
+### Example: `brutality %- 20`
 
 | Starting value | Result |
 |---|---|
@@ -123,7 +123,7 @@ Used in `*if`, `*elseif`, and `*selectable_if` conditions.
 
 | Operator | Meaning |
 |---|---|
-| `=` | Equal to — **this is equality, not assignment** |
+| `=` | Equal to (**this is equality, not assignment**) |
 | `!=` | Not equal to |
 | `<` | Less than |
 | `>` | Greater than |
@@ -136,7 +136,7 @@ Used in `*if`, `*elseif`, and `*selectable_if` conditions.
 *if wounds >= 3
 ```
 
-Assignment uses `*set`. The `=` operator never assigns — it only tests.
+Assignment uses `*set`. The `=` operator never assigns; it only tests.
 
 ---
 
@@ -152,7 +152,7 @@ Combine conditions with `and` and `or`. Sub-expressions must be parenthesized.
   You find a way through.
 ```
 
-`not()` is a function, not an operator — see [functions.md](functions.md).
+`not()` is a function, not an operator; see [functions.md](functions.md).
 
 ---
 

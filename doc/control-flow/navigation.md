@@ -111,7 +111,7 @@ Like `*finish`, but signals that the game is complete. Displays a "Play Again" b
 *ending
 ```
 
-Use `*ending` on any branch that represents a true conclusion — victory, death, or a definitive end state.
+Use `*ending` on any branch that represents a true conclusion: victory, death, or a definitive end state.
 
 ---
 
@@ -126,13 +126,13 @@ Jumps to a randomly selected scene from a list. Each scene name is on its own in
   scene_c
 ```
 
-Each entry has an equal probability of being selected. The jump is one-way — like `*goto_scene`, execution does not return.
+Each entry has an equal probability of being selected. The jump is one-way, like `*goto_scene`; execution does not return.
 
 ---
 
 ## `*redirect_scene`
 
-A specialized command for use inside `choicescript_stats.txt` only. It cannot be used in regular scene files — doing so throws a runtime error.
+A specialized command for use inside `choicescript_stats.txt` only. It cannot be used in regular scene files; doing so throws a runtime error.
 
 For subroutine calls that span scene files, use `*gosub_scene` instead.
 
@@ -194,7 +194,7 @@ To avoid this:
 
 - Include a `*choice` inside any loop that players can cycle through more than a few times. A `*choice` resets the jump counter.
 - Use `*looplimit` to adjust the threshold when working with intentionally deep structures.
-- `*page_break` does **not** reset the jump counter — only `*choice` does.
+- `*page_break` does **not** reset the jump counter; only `*choice` does.
 
 ```
 *label poll_loop

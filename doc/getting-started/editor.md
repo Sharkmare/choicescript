@@ -123,6 +123,10 @@ Commands are grouped by function. The color tells you what a command does at a g
 | **Yellow** (bold) | Label definition (`*label name`) | `*label start_battle` |
 | **Yellow** | Label reference (after `*goto` or `*gosub`) | `*goto start_battle` |
 
+Label references are clickable. Click any yellow label name after a `*goto` or `*gosub` to jump the cursor to the matching `*label` in the current scene. Hover shows an underline before you click.
+
+If you're currently scoped to a container and the target label lives outside it, the container scope switches automatically to the container that holds the label. If the label is between containers (not inside any named section), the view resets to **(Full file)**.
+
 ### Options
 
 Option lines (`#` at the start of an indented line inside a `*choice` block) are rendered in **green italic**.

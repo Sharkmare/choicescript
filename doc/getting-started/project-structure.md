@@ -2,7 +2,7 @@
 
 # Project Structure
 
-A ChoiceScript project is a small collection of plain files. There is no build step — the engine reads everything at runtime.
+A ChoiceScript project is a small collection of plain files. There is no build step; the engine reads everything at runtime.
 
 ---
 
@@ -20,9 +20,9 @@ web/
         └── death.txt     Shared game-over scene (by convention)
 ```
 
-- **`web/mygame/scenes/`** — all your scene files live here, one `.txt` per scene.
-- **`web/mygame/mygame.js`** — tells the engine which scenes exist and in what order, and sets the starting values of all permanent variables.
-- **`web/mygame/index.html`** — the entry point. Open this file in a browser to run the game. No server required for basic play.
+- **`web/mygame/scenes/`**: all your scene files live here, one `.txt` per scene.
+- **`web/mygame/mygame.js`**: tells the engine which scenes exist and in what order, and sets the starting values of all permanent variables.
+- **`web/mygame/index.html`**: the entry point. Open this file in a browser to run the game. No server required for basic play.
 
 ---
 
@@ -113,7 +113,7 @@ Most ChoiceScript games have a shared scene for game-over states. By convention 
 *goto_scene death
 ```
 
-`death.txt` typically displays a game-over message and offers a restart link. Because it is reached via `*goto_scene` rather than the normal scene order, it does not need to appear in the navigator array — but it must exist in the `scenes/` folder.
+`death.txt` typically displays a game-over message and offers a restart link. Because it is reached via `*goto_scene` rather than the normal scene order, it does not need to appear in the navigator array, but it must exist in the `scenes/` folder.
 
 ```
 You have died.

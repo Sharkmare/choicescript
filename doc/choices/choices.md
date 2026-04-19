@@ -8,7 +8,7 @@ Choice commands are the core mechanic of ChoiceScript. They present the player w
 
 ## `*choice`
 
-Presents a list of options to the player. Each option begins with `#`. The body of each option must terminate with `*finish`, `*goto`, `*goto_scene`, or another branching command — every path must end.
+Presents a list of options to the player. Each option begins with `#`. The body of each option must terminate with `*finish`, `*goto`, `*goto_scene`, or another branching command; every path must end.
 
 ```
 *choice
@@ -48,7 +48,7 @@ Option bodies can contain further `*choice` blocks, indented deeper. This create
 
 ## `*fake_choice`
 
-Like `*choice`, but all paths converge to the line immediately after the `*fake_choice` block — no `*goto` or `*finish` needed inside option bodies. Use this for flavor decisions that don't affect the narrative outcome.
+Like `*choice`, but all paths converge to the line immediately after the `*fake_choice` block; no `*goto` or `*finish` needed inside option bodies. Use this for flavor decisions that don't affect the narrative outcome.
 
 ```
 *fake_choice
@@ -104,7 +104,7 @@ Shows an option but renders it unclickable (grayed out) when the condition is fa
 
 Use `*selectable_if` when you want the player to understand what they are missing. Use a conditional `*if` when a hidden option would be confusing.
 
-**Note:** `*selectable_if` is a platform feature implemented in the official Choice of Games runner. In this engine build it is not available — the line will be treated as an unknown command and throw an error. Use a conditional `*if` instead.
+**Note:** `*selectable_if` is a platform feature implemented in the official Choice of Games runner. In this engine build it is not available; the line will be treated as an unknown command and throw an error. Use a conditional `*if` instead.
 
 ---
 

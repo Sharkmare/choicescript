@@ -2,7 +2,7 @@
 
 # Functions
 
-Functions transform values and are used inside expressions — in `*set` assignments, `*if` conditions, and anywhere an expression is valid.
+Functions transform values and are used inside expressions: in `*set` assignments, `*if` conditions, and anywhere an expression is valid.
 
 Multi-argument functions (`min`, `max`) separate their arguments with commas. All other functions take a single argument.
 
@@ -117,7 +117,7 @@ Rounds `n` up to the nearest integer (toward positive infinity).
 
 ### `abs(n)`
 
-Returns the absolute value of `n` — removes the sign.
+Returns the absolute value of `n`, removing the sign.
 
 ```
 *set distance abs(target - position)

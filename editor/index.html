@@ -446,14 +446,11 @@ body {
 <script>
 'use strict';
 
-const STAT_VARS = new Set(['brutality','cunning','disdain','infamy','wealth','wounds','blasphemy']);
-const FAIRMATH_VARS = new Set(['brutality','cunning','disdain','infamy']);
-const OPPOSED_PAIRS = [
-  {name:'brutality', lo:'Finesse', hi:'Brutality'},
-  {name:'cunning',   lo:'Honor',   hi:'Cunning'},
-  {name:'disdain',   lo:'Vigilance', hi:'Disdain'},
-];
-const INTEGER_STATS = ['wealth','wounds','blasphemy'];
+// Populated from startup.txt on load; see applyStartupConfig below
+let statVars    = new Set();
+let fairmathVars = new Set();
+let opposedPairs = [];
+let integerStats = [];
 
 const CMD_FLOW   = new Set(['if','elseif','else','endif','choice','fake_choice','for','switch','case','default','endswitch']);
 const CMD_NAV    = new Set(['goto','goto_scene','goto_random_scene','gotoref','finish','ending','return','abort','bug','gosub','gosub_scene','redirect_scene']);
@@ -628,7 +625,7 @@ CodeMirror.defineMIME('text/x-choicescript', 'choicescript');
 })();
 
 let currentScene   = '';
-let startingStats  = {brutality:50,cunning:50,disdain:50,infamy:0,wealth:5000,wounds:0,blasphemy:0};
+let startingStats  = {};
 let sceneSelections = {};  // sceneName → {choiceIdx → optionIdx}
 let saveTimer      = null;
 let statUpdateTimer = null;
@@ -686,7 +683,7 @@ function extractLabels(text) {
 }
 
 function extractVars(text) {
-  const vars = new Set([...STAT_VARS]);
+  const vars = new Set([...statVars]);
   for (const line of text.split('\n')) {
     const m = line.trim().match(/^\*(?:create|temp)\s+(\w+)/i);
     if (m) vars.add(m[1].toLowerCase());
@@ -898,7 +895,7 @@ async function loadSceneList() {
     if (scenes.includes('startup')) {
       try {
         const {content} = await apiGet('/api/scene/startup');
-        startingStats = parseStartingStats(content);
+        applyStartupConfig(content);
       } catch (_) {}
     }
 
@@ -1015,19 +1012,78 @@ document.querySelectorAll('.ptab').forEach(tab => {
   });
 })();
 
-function parseStartingStats(startupText) {
-  const stats = {brutality:50,cunning:50,disdain:50,infamy:0,wealth:5000,wounds:0,blasphemy:0};
-  for (const line of startupText.split('\n')) {
+function parseStartupConfig(text) {
+  const lines = text.split('\n');
+
+  // All *create declarations: varname → raw value string
+  const created = {};
+  for (const line of lines) {
     const m = line.trim().match(/^\*create\s+(\w+)\s+(.+)/i);
-    if (m) {
-      const v = m[1].toLowerCase();
-      if (STAT_VARS.has(v)) {
-        const n = parseFloat(m[2]);
-        if (!isNaN(n)) stats[v] = n;
-      }
-    }
+    if (m) created[m[1].toLowerCase()] = m[2].trim();
   }
-  return stats;
+
+  // Parse *stat_chart for opposed pairs and percent (fairmath) vars
+  const pairs  = [];
+  const fmVars = new Set();
+  let inChart     = false;
+  let chartIndent = -1;
+  let pending     = null;  // {name, hi} while collecting pole labels
+
+  for (const raw of lines) {
+    const trimmed = raw.trim();
+    if (!inChart) {
+      if (/^\s*\*stat_chart\b/i.test(raw)) {
+        inChart     = true;
+        chartIndent = raw.match(/^(\s*)/)[1].length;
+      }
+      continue;
+    }
+
+    const lineIndent = raw.match(/^(\s*)/)[1].length;
+    if (trimmed && lineIndent <= chartIndent && trimmed.startsWith('*')) {
+      inChart = false; pending = null; continue;
+    }
+    if (!trimmed) continue;
+
+    if (pending !== null) {
+      if (pending.hi === '') { pending.hi = trimmed; continue; }
+      pairs.push({name: pending.name, hi: pending.hi, lo: trimmed});
+      fmVars.add(pending.name);
+      pending = null;
+      continue;
+    }
+
+    const mOpp = trimmed.match(/^opposed_pair\s+(\w+)/i);
+    if (mOpp) { pending = {name: mOpp[1].toLowerCase(), hi: ''}; continue; }
+
+    const mPct = trimmed.match(/^percent\s+(\w+)/i);
+    if (mPct) fmVars.add(mPct[1].toLowerCase());
+  }
+
+  // Numeric *create vars become tracked stats
+  const sVars  = new Set();
+  const sStats = {};
+  for (const [v, val] of Object.entries(created)) {
+    const n = parseFloat(val);
+    if (!isNaN(n)) { sVars.add(v); sStats[v] = n; }
+  }
+
+  return {
+    statVars:     sVars,
+    fairmathVars: fmVars,
+    opposedPairs: pairs,
+    integerStats: [...sVars].filter(v => !fmVars.has(v)),
+    startingStats: sStats,
+  };
+}
+
+function applyStartupConfig(text) {
+  const cfg  = parseStartupConfig(text);
+  statVars    = cfg.statVars;
+  fairmathVars = cfg.fairmathVars;
+  opposedPairs = cfg.opposedPairs;
+  integerStats = cfg.integerStats;
+  startingStats = cfg.startingStats;
 }
 
 // Tracks which branch the cursor is in to filter to the path leading here.
@@ -1122,7 +1178,7 @@ function extractStatSets(lines, start, end) {
     const m = t.match(/^\*set\s+(\w+)\s+(.*)/i);
     if (m) {
       const v = m[1].toLowerCase();
-      if (STAT_VARS.has(v)) sets.push({var: v, expr: m[2].trim()});
+      if (statVars.has(v)) sets.push({var: v, expr: m[2].trim()});
     }
   }
   return sets;
@@ -1247,18 +1303,22 @@ function renderStatBars(stats) {
   const el = document.getElementById('stat-bars');
   el.innerHTML = '';
 
-  OPPOSED_PAIRS.forEach(p => {
+  opposedPairs.forEach(p => {
     const v = Math.max(0, Math.min(100, stats[p.name] || 0));
     el.appendChild(makeBar(p.name, v, 100, 'opposed', p.lo, p.hi));
   });
 
-  el.appendChild(makeBar('infamy', Math.max(0,Math.min(100,stats.infamy||0)), 100, 'percent'));
+  const opposedNames = new Set(opposedPairs.map(p => p.name));
+  fairmathVars.forEach(v => {
+    if (opposedNames.has(v)) return;
+    el.appendChild(makeBar(v, Math.max(0, Math.min(100, stats[v] || 0)), 100, 'percent'));
+  });
 
-  // Integers: normalize for display only
-  const wealthMax = Math.max(stats.wealth || 0, startingStats.wealth || 5000, 1);
-  el.appendChild(makeBar('wealth', stats.wealth||0, wealthMax, 'integer'));
-  el.appendChild(makeBar('wounds', Math.max(0, Math.min(5, stats.wounds||0)), 5, 'wound'));
-  el.appendChild(makeBar('blasphemy', stats.blasphemy||0, 3, 'wound'));
+  integerStats.forEach(v => {
+    const val = stats[v] || 0;
+    const max = Math.max(val, startingStats[v] || 0, 1);
+    el.appendChild(makeBar(v, val, max, 'integer'));
+  });
 }
 
 function makeBar(name, value, max, kind, loLabel, hiLabel) {
@@ -1389,7 +1449,7 @@ async function previewContainer() {
   }
 
   // *temp declarations let *set commands in the container work without startup.txt
-  const tempHeader = [...STAT_VARS].map(v => `*temp ${v} ${Math.round(Number(stats[v]) || 0)}`).join('\n');
+  const tempHeader = [...statVars].map(v => `*temp ${v} ${Math.round(Number(stats[v]) || 0)}`).join('\n');
   const content = tempHeader + '\n' + lines.slice(startLine, endLine + 1).join('\n');
   try {
     await apiPost('/api/scene/_container_preview', {content});

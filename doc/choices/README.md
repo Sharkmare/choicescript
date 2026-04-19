@@ -6,4 +6,4 @@ Choice commands present options to the player and branch the narrative based on 
 
 | Page | Description |
 |---|---|
-| [choices.md](choices.md) | `*choice`, `*fake_choice`, conditional options, reuse modifiers — everything about presenting and controlling player decisions |
+| [choices.md](choices.md) | `*choice`, `*fake_choice`, conditional options, reuse modifiers: everything about presenting and controlling player decisions |

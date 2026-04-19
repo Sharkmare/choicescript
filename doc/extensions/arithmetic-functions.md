@@ -8,7 +8,7 @@ These functions can be used anywhere a value is expected: in `*set`, `*temp`, `*
 
 ## Math Functions
 
-### `floor(n)` — Round Down
+### `floor(n)`: Round Down
 
 Returns the largest integer less than or equal to `n`.
 
@@ -24,7 +24,7 @@ Returns the largest integer less than or equal to `n`.
 
 `x = -2`
 
-### `ceil(n)` — Round Up
+### `ceil(n)`: Round Up
 
 Returns the smallest integer greater than or equal to `n`.
 
@@ -34,7 +34,7 @@ Returns the smallest integer greater than or equal to `n`.
 
 `x = 4`
 
-### `abs(n)` — Absolute Value
+### `abs(n)`: Absolute Value
 
 Returns the non-negative magnitude of `n`.
 
@@ -50,7 +50,7 @@ Returns the non-negative magnitude of `n`.
 
 `x` is always non-negative regardless of `score`'s sign.
 
-### `min(a, b)` — Smaller of Two Values
+### `min(a, b)`: Smaller of Two Values
 
 ```
 *temp capped min(health, 100)
@@ -58,7 +58,7 @@ Returns the non-negative magnitude of `n`.
 
 Caps `health` at 100. If `health` is already below 100, returns `health` unchanged.
 
-### `max(a, b)` — Larger of Two Values
+### `max(a, b)`: Larger of Two Values
 
 ```
 *temp floored max(score, 0)
@@ -70,7 +70,7 @@ Floors `score` at 0. If `score` is already above 0, returns `score` unchanged.
 
 ## String Functions
 
-### `lowercase(s)` — Convert to Lowercase
+### `lowercase(s)`: Convert to Lowercase
 
 ```
 *temp slug lowercase(playername)
@@ -78,7 +78,7 @@ Floors `score` at 0. If `score` is already above 0, returns `score` unchanged.
 
 Useful for normalizing user input before comparison or display.
 
-### `uppercase(s)` — Convert to Uppercase
+### `uppercase(s)`: Convert to Uppercase
 
 ```
 *set title uppercase(title)

@@ -21,7 +21,7 @@ Renders as two paragraphs: the first two lines merged, then a break before the t
 
 ## `*line_break`
 
-Inserts a single line break within a paragraph — equivalent to HTML `<br>`. Does not create a new paragraph.
+Inserts a single line break within a paragraph, equivalent to HTML `<br>`. Does not create a new paragraph.
 
 ```
 Name: ${playername}
@@ -187,8 +187,8 @@ Trigger the platform's save and load UI.
 *restore_game
 ```
 
-- `*save_game` — opens the save dialog, allowing the player to write the current game state to a named slot.
-- `*restore_game` — opens the load dialog, allowing the player to resume from a previously saved slot.
+- `*save_game`: opens the save dialog, allowing the player to write the current game state to a named slot.
+- `*restore_game`: opens the load dialog, allowing the player to resume from a previously saved slot.
 
 Both commands are no-ops in the local `index.html` test environment. They only function in the Choice of Games web player and mobile app.
 
@@ -203,8 +203,8 @@ Save and restore a single automatic checkpoint slot.
 *restore_checkpoint
 ```
 
-- `*save_checkpoint` — writes the current game state to the checkpoint slot, overwriting any previous checkpoint.
-- `*restore_checkpoint` — jumps back to the scene and state at the most recent checkpoint. If no checkpoint exists, this is a no-op.
+- `*save_checkpoint`: writes the current game state to the checkpoint slot, overwriting any previous checkpoint.
+- `*restore_checkpoint`: jumps back to the scene and state at the most recent checkpoint. If no checkpoint exists, this is a no-op.
 
 Checkpoint saves are intended for automatic progress saves (e.g. at the start of each chapter) rather than player-managed slots. The checkpoint slot is separate from the named save slots used by `*save_game`.
 
@@ -212,7 +212,7 @@ Checkpoint saves are intended for automatic progress saves (e.g. at the start of
 
 ## `*script`
 
-Execute arbitrary inline JavaScript. The result of the expression is discarded — `*script` produces no output on its own.
+Execute arbitrary inline JavaScript. The result of the expression is discarded; `*script` produces no output on its own.
 
 ```
 *script Math.floor(Math.random() * 6) + 1

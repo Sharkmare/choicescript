@@ -4,7 +4,7 @@
 
 ---
 
-## `*push` / `*pop` — Dynamic Arrays
+## `*push` / `*pop`: Dynamic Arrays
 
 Standard arrays declared with `*create_array` have a fixed size set at declaration time. `*push` and `*pop` let you grow and shrink arrays at runtime, making them suitable for inventories, history logs, and stacks where the final size is not known in advance.
 
@@ -28,7 +28,7 @@ Scene-local (destroyed when the scene exits):
 
 ---
 
-## `*push` — Append to End
+## `*push`: Append to End
 
 Increments the count variable and assigns the value to the new last slot.
 
@@ -52,7 +52,7 @@ Syntax: `*push arrayname value`
 
 ---
 
-## `*pop` — Remove from End
+## `*pop`: Remove from End
 
 Removes the last element, stores it in a destination variable, and decrements the count.
 
@@ -76,8 +76,8 @@ The permanence of pushed elements follows the permanence of the count variable.
 
 | Count variable declared with | Pushed elements are |
 |---|---|
-| `*create` | Permanent — survive scene transitions |
-| `*temp` | Temporary — destroyed when the scene exits |
+| `*create` | Permanent: survive scene transitions |
+| `*temp` | Temporary: destroyed when the scene exits |
 
 Do not mix: if `inventory_count` is a `*create` variable, the elements `inventory_1`, `inventory_2`, etc. are also permanent, and will be present in the next scene.
 

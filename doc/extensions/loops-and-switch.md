@@ -4,7 +4,7 @@
 
 ---
 
-## `*for` / `*next` — Counted Loop
+## `*for` / `*next`: Counted Loop
 
 Runs a block of statements a fixed number of times, counting a variable from a start value to an end value.
 
@@ -23,11 +23,11 @@ Runs a block of statements a fixed number of times, counting a variable from a s
 ### Rules
 
 - `varname` is auto-declared as a temp if it does not already exist.
-- The body runs at the **same indent level** as `*for` — it is not indented. This is a ChoiceScript engine constraint: only `*if` and `*choice` introduce indented blocks.
+- The body runs at the **same indent level** as `*for`; it is not indented. This is a ChoiceScript engine constraint: only `*if` and `*choice` introduce indented blocks.
 - `step` defaults to `1`. Must be non-zero.
 - The body is **skipped entirely** if `min > max` with a positive step, or `min < max` with a negative step.
 - The loop throws after 1,000 iterations by default (same guard as `*goto` loops). Override with `*looplimit n` before the loop.
-- After the loop exits normally, `varname` holds the first value that exceeded the bound — not the last in-range value. For `*for i from 1 to 5`, `i` will be `6` after the loop ends. If you need the final in-range value, capture it inside the body.
+- After the loop exits normally, `varname` holds the first value that exceeded the bound, not the last in-range value. For `*for i from 1 to 5`, `i` will be `6` after the loop ends. If you need the final in-range value, capture it inside the body.
 
 ### Examples
 
@@ -51,7 +51,7 @@ Calling a subroutine each round:
 *next round
 ```
 
-Negative step — counting down:
+Negative step, counting down:
 
 ```
 *for i from 10 to 1 step -1
@@ -59,7 +59,7 @@ Round ${i}...
 *next i
 ```
 
-Body skip — min exceeds max with positive step:
+Body skip, min exceeds max with positive step:
 
 ```
 *for i from 10 to 5
@@ -93,16 +93,16 @@ Branch on a single value without chaining `*if`/`*elseif`. Cleaner than a long `
 
 ### Rules
 
-- All labels — `*case`, `*default`, `*endswitch` — must be at the **same indent level** as `*switch`.
+- All labels (`*case`, `*default`, `*endswitch`) must be at the **same indent level** as `*switch`.
 - Body lines also run at the same indent (same engine constraint as `*for`).
-- When a matching `*case` (or `*default`) is found, its body runs until `*finish`, `*goto`, or `*goto_scene`. If execution reaches another `*case`, `*default`, or `*endswitch` label, it jumps immediately to `*endswitch` — there is no fall-through.
+- When a matching `*case` (or `*default`) is found, its body runs until `*finish`, `*goto`, or `*goto_scene`. If execution reaches another `*case`, `*default`, or `*endswitch` label, it jumps immediately to `*endswitch`; there is no fall-through.
 - If no case matches and there is no `*default`, execution falls through to `*endswitch` and continues normally.
 - `*endswitch` is required. Omitting it is a parse error.
 - Nested `*switch` is supported.
 
 Value matching compares as string and loosely as number. `*case "5"` matches a variable holding integer `5`.
 
-### Example — Distinct Bodies
+### Example: Distinct Bodies
 
 ```
 *switch cunning
@@ -113,12 +113,12 @@ You are perfectly honorable. Your word is law.
 You are perfectly cunning. Your word is a trap.
 *finish
 *default
-You are somewhere in between — pragmatic, perhaps.
+You are somewhere in between, pragmatic perhaps.
 *finish
 *endswitch
 ```
 
-### Example — Sequential Cases
+### Example: Sequential Cases
 
 ```
 *temp bonus 0
