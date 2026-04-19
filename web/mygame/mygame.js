@@ -11,7 +11,10 @@ stats = {
  "leadership": "50",
  "strength": "50"
 };
-purchases = {};
+purchases = {
+ "fake:adfree": "adfree",
+ "fake:skiponce": "skiponce"
+};
 achievements = [];
 nav.setStartingStatsClone(stats);if (achievements.length) {
   nav.loadAchievements(achievements);

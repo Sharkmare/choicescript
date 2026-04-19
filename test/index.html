@@ -9,7 +9,6 @@
   h2   { color: #8be9fd; font-size: 13px; margin: 24px 0 8px; border-bottom: 1px solid #44475a; padding-bottom: 4px; }
   .pass { color: #50fa7b; }
   .fail { color: #ff5555; }
-  .skip { color: #6272a4; }
   .row  { padding: 2px 0; font-size: 12px; }
   .detail { color: #ffb86c; font-size: 11px; padding-left: 20px; }
   #summary { margin-top: 20px; padding: 10px; background: #383a4a; border-radius: 4px; font-size: 13px; }
@@ -36,9 +35,7 @@ if (typeof alert   === 'undefined') window.alert   = msg => console.warn('alert:
 const results = [];
 let currentSuite = '';
 
-function suite(name) {
-  currentSuite = name;
-}
+function suite(name) { currentSuite = name; }
 
 function test(name, fn) {
   try {
@@ -57,43 +54,30 @@ function assertEqual(a, b, msg) {
   if (a !== b) throw new Error((msg || '') + ` expected ${JSON.stringify(b)}, got ${JSON.stringify(a)}`);
 }
 
-function assertThrows(fn, msgFragment) {
-  let threw = false;
-  try { fn(); } catch (e) {
-    threw = true;
-    if (msgFragment && !e.message.includes(msgFragment)) {
-      throw new Error(`Expected error containing "${msgFragment}", got: ${e.message}`);
-    }
-  }
-  if (!threw) throw new Error('Expected an error to be thrown');
-}
-
 function assertNoThrow(fn) {
-  try { fn(); } catch (e) {
-    throw new Error('Unexpected error: ' + e.message);
-  }
+  try { fn(); } catch (e) { throw new Error('Unexpected error: ' + e.message); }
 }
 
 // ── Minimal Scene factory for parseOptions tests ─────────────────────────────
 function makeScene(lines) {
   const scene = new Scene('test', {brutality: 50}, null, {});
-  scene.lines  = lines;
-  scene.lineNum = 0;   // caller sets this to the *choice line before calling parseOptions
+  scene.lines   = lines;
+  scene.lineNum = 0;
   scene.indent  = 0;
   return scene;
 }
 
-// ── parseOptions regression tests ────────────────────────────────────────────
+// ── parseOptions — *comment handling ─────────────────────────────────────────
 suite('parseOptions — *comment handling');
 
 test('comment between *choice and first option does not throw', () => {
   const scene = makeScene([
-    '*choice',             // 0
-    '  *comment setup',   // 1  ← the regression: comment before any option
-    '  #Option A',        // 2
-    '    *finish',         // 3
-    '  #Option B',        // 4
-    '    *finish',         // 5
+    '*choice',
+    '  *comment setup',
+    '  #Option A',
+    '    *finish',
+    '  #Option B',
+    '    *finish',
   ]);
   scene.lineNum = 0;
   assertNoThrow(() => scene.parseOptions(0, ['choice'], true));
@@ -174,12 +158,10 @@ test('choice without comment still works (regression guard)', () => {
   assertEqual(opts.length, 2, 'option count:');
 });
 
-// ── Container marker parsing tests ───────────────────────────────────────────
-suite('parseContainers');
+// ── parseContainers — n-depth system ─────────────────────────────────────────
+suite('parseContainers — n-depth');
 
-// Inline pure functions from editor (extracted for testability)
-const CHAPTER_RE = /^\*comment\s+=(?!=)\s*(.+)/i;
-const SECTION_RE = /^\*comment\s+==\s*(.+)/i;
+const CONTAINER_RE = /^\*comment\s+(=+)\s*(.+)/i;
 
 function parseContainers(text) {
   const rawLines = text.split('\n');
@@ -187,62 +169,60 @@ function parseContainers(text) {
   const items    = [];
 
   for (let i = 0; i < rawLines.length; i++) {
-    const l  = rawLines[i];
-    const cm = l.match(CHAPTER_RE);
-    const sm = l.match(SECTION_RE);
-    if (cm)      items.push({type: 'chapter', name: cm[1].trim(), line: i});
-    else if (sm) items.push({type: 'section', name: sm[1].trim(), line: i});
+    const m = rawLines[i].match(CONTAINER_RE);
+    if (m) items.push({depth: m[1].length, name: m[2].trim(), line: i, endLine: lastLine});
   }
 
+  // A container ends before the next container at the same or shallower depth
   for (let i = 0; i < items.length; i++) {
-    if (items[i].type === 'chapter') {
-      let end = lastLine;
-      for (let j = i + 1; j < items.length; j++) {
-        if (items[j].type === 'chapter') { end = items[j].line - 1; break; }
-      }
-      items[i].endLine = end;
-    } else {
-      let end = lastLine;
-      for (let j = i + 1; j < items.length; j++) { end = items[j].line - 1; break; }
-      items[i].endLine = end;
+    for (let j = i + 1; j < items.length; j++) {
+      if (items[j].depth <= items[i].depth) { items[i].endLine = items[j].line - 1; break; }
     }
   }
+
   return items;
 }
 
 test('empty file yields no containers', () => {
-  const items = parseContainers('');
-  assertEqual(items.length, 0);
+  assertEqual(parseContainers('').length, 0);
 });
 
-test('single chapter detected', () => {
+test('single depth-1 container is detected', () => {
   const items = parseContainers('*comment = Act One\nsome text');
   assertEqual(items.length, 1);
-  assertEqual(items[0].type, 'chapter');
+  assertEqual(items[0].depth, 1);
   assertEqual(items[0].name, 'Act One');
   assertEqual(items[0].line, 0);
   assertEqual(items[0].endLine, 1);
 });
 
-test('section marker not confused with chapter', () => {
+test('depth-2 container is detected', () => {
   const items = parseContainers('*comment == Section One\nsome text');
   assertEqual(items.length, 1);
-  assertEqual(items[0].type, 'section');
+  assertEqual(items[0].depth, 2);
   assertEqual(items[0].name, 'Section One');
 });
 
-test('chapter regex does not match section marker (== stays section)', () => {
-  const text = '*comment == Not a chapter';
-  assert(!text.match(CHAPTER_RE), '== should not match chapter regex');
-  assert(text.match(SECTION_RE),  '== should match section regex');
+test('depth-3 container is detected', () => {
+  const items = parseContainers('*comment === Sub section\nsome text');
+  assertEqual(items.length, 1);
+  assertEqual(items[0].depth, 3);
+  assertEqual(items[0].name, 'Sub section');
 });
 
-test('two chapters: each ends before the next begins', () => {
+test('depth-7 container is detected', () => {
+  const items = parseContainers('*comment ======= Deep\nsome text');
+  assertEqual(items.length, 1);
+  assertEqual(items[0].depth, 7);
+  assertEqual(items[0].name, 'Deep');
+});
+
+test('two depth-1 containers: first ends before second begins', () => {
   const text = [
-    '*comment = Chapter 1',   // 0
-    'some text',              // 1
-    '*comment = Chapter 2',   // 2
-    'more text',              // 3
+    '*comment = Chapter 1',  // 0
+    'some text',             // 1
+    '*comment = Chapter 2',  // 2
+    'more text',             // 3
   ].join('\n');
   const items = parseContainers(text);
   assertEqual(items.length, 2);
@@ -250,48 +230,68 @@ test('two chapters: each ends before the next begins', () => {
   assertEqual(items[1].endLine, 3, 'chapter 2 end:');
 });
 
-test('section ends before next marker regardless of level', () => {
+test('depth-1 is not cut by its deeper children', () => {
   const text = [
-    '*comment = Chapter 1',   // 0
-    '*comment == Section A',  // 1
-    'prose',                  // 2
-    '*comment == Section B',  // 3
-    'more prose',             // 4
-  ].join('\n');
-  const items = parseContainers(text);
-  const secA = items.find(i => i.name === 'Section A');
-  assertEqual(secA.endLine, 2, 'section A end:');
-});
-
-test('chapter span is not cut by its own sections', () => {
-  const text = [
-    '*comment = Chapter 1',   // 0
-    '*comment == Section A',  // 1
-    'prose',                  // 2
-    '*comment == Section B',  // 3
-    'more prose',             // 4
-    '*comment = Chapter 2',   // 5
+    '*comment = Chapter 1',  // 0
+    '*comment == Section A', // 1
+    'prose',                 // 2
+    '*comment == Section B', // 3
+    'more prose',            // 4
+    '*comment = Chapter 2',  // 5
   ].join('\n');
   const items = parseContainers(text);
   const ch1 = items.find(i => i.name === 'Chapter 1');
-  assertEqual(ch1.endLine, 4, 'chapter 1 should span through its sections:');
+  assertEqual(ch1.endLine, 4, 'depth-1 spans through its children:');
+});
+
+test('depth-2 ends before next depth-2 sibling', () => {
+  const text = [
+    '*comment = Chapter 1',  // 0
+    '*comment == Section A', // 1
+    'prose',                 // 2
+    '*comment == Section B', // 3
+    'more prose',            // 4
+  ].join('\n');
+  const items = parseContainers(text);
+  const secA = items.find(i => i.name === 'Section A');
+  assertEqual(secA.endLine, 2, 'section A ends before section B:');
+});
+
+test('depth-3 ends before next depth-2 (shallower sibling)', () => {
+  const text = [
+    '*comment = Act',        // 0
+    '*comment == Scene',     // 1
+    '*comment === Beat',     // 2
+    'prose',                 // 3
+    '*comment == Scene 2',   // 4
+  ].join('\n');
+  const items = parseContainers(text);
+  const beat = items.find(i => i.name === 'Beat');
+  assertEqual(beat.endLine, 3, 'depth-3 ends before depth-2 that follows:');
 });
 
 test('names with spaces and punctuation are preserved', () => {
-  const items = parseContainers('*comment = The Dragon\'s Lair, Part II');
-  assertEqual(items[0].name, 'The Dragon\'s Lair, Part II');
+  const items = parseContainers("*comment = The Dragon's Lair, Part II");
+  assertEqual(items[0].name, "The Dragon's Lair, Part II");
+});
+
+test('plain *comment lines without = are ignored', () => {
+  const text = '*comment this is just a note\n*comment = Container';
+  const items = parseContainers(text);
+  assertEqual(items.length, 1);
+  assertEqual(items[0].name, 'Container');
 });
 
 test('case insensitive marker detection', () => {
   const items = parseContainers('*COMMENT = Upper Case Chapter');
   assertEqual(items.length, 1);
-  assertEqual(items[0].type, 'chapter');
+  assertEqual(items[0].depth, 1);
 });
 
-// ── Stats simulation tests ───────────────────────────────────────────────────
-suite('simulateStats');
+// ── Stats simulation — applySet ───────────────────────────────────────────────
+suite('simulateStats — applySet');
 
-const STAT_VARS = new Set(['brutality','cunning','disdain','infamy','wealth','wounds','blasphemy']);
+const STAT_VARS_TEST = new Set(['brutality','cunning','disdain','infamy','wealth','wounds','blasphemy']);
 
 function fairAdd(v, n) { return Math.min(100, Math.round(v + (100 - v) * n / 100)); }
 function fairSub(v, n) { return Math.max(0,   Math.round(v - v * n / 100)); }
@@ -311,10 +311,11 @@ function applySet(stats, varName, expr) {
   else if (numMatch)  stats[varName] = parseInt(numMatch[1]);
 }
 
+// simulateStats keyed by choiceLine — matches the editor implementation
 function simulateStats(choices, selections, starting) {
   const stats = Object.assign({}, starting);
-  choices.forEach((choice, ci) => {
-    const selIdx = selections[ci] !== undefined ? selections[ci] : 0;
+  choices.forEach(choice => {
+    const selIdx = selections[choice.choiceLine] !== undefined ? selections[choice.choiceLine] : 0;
     const option = choice.options[selIdx];
     if (!option) return;
     option.statSets.forEach(s => applySet(stats, s.var, s.expr));
@@ -322,19 +323,19 @@ function simulateStats(choices, selections, starting) {
   return stats;
 }
 
-const BASE_STATS = {brutality:50, cunning:50, disdain:50, infamy:0, wealth:5000, wounds:0, blasphemy:0};
+const BASE = {brutality:50, cunning:50, disdain:50, infamy:0, wealth:5000, wounds:0, blasphemy:0};
 
-test('fairmath push toward high pole', () => {
-  const s = Object.assign({}, BASE_STATS);
+test('fairmath %+ pushes toward 100', () => {
+  const s = Object.assign({}, BASE);
   applySet(s, 'brutality', '%+10');
-  // fairAdd(50, 10) = round(50 + 50*0.10) = round(55) = 55
+  // fairAdd(50, 10) = round(50 + 50*0.10) = 55
   assertEqual(s.brutality, 55);
 });
 
-test('fairmath push toward low pole', () => {
-  const s = Object.assign({}, BASE_STATS);
+test('fairmath %- pushes toward 0', () => {
+  const s = Object.assign({}, BASE);
   applySet(s, 'brutality', '%-10');
-  // fairSub(50, 10) = round(50 - 50*0.10) = round(45) = 45
+  // fairSub(50, 10) = round(50 - 50*0.10) = 45
   assertEqual(s.brutality, 45);
 });
 
@@ -350,69 +351,117 @@ test('fairmath clamps at 0', () => {
   assertEqual(s.brutality, 0);
 });
 
-test('fairmath uses round not floor (regression: floor gave wrong values)', () => {
+test('fairmath uses round not floor: %+15 from 50 gives 58', () => {
   // fairAdd(50, 15): 50 + 50*0.15 = 57.5 → round=58, floor=57
   const s = {brutality: 50};
   applySet(s, 'brutality', '%+15');
-  assertEqual(s.brutality, 58, 'round(57.5) must be 58, not 57:');
+  assertEqual(s.brutality, 58, 'round(57.5) must be 58 not 57:');
 });
 
 test('plain addition on integer stat', () => {
-  const s = Object.assign({}, BASE_STATS);
+  const s = Object.assign({}, BASE);
   applySet(s, 'wealth', '+500');
   assertEqual(s.wealth, 5500);
 });
 
 test('plain subtraction on integer stat', () => {
-  const s = Object.assign({}, BASE_STATS);
+  const s = Object.assign({}, BASE);
   applySet(s, 'wounds', '-1');
-  // 0 - 1 = -1 (engine allows this; clamp is display-only)
   assertEqual(s.wounds, -1);
 });
 
 test('direct assignment', () => {
-  const s = Object.assign({}, BASE_STATS);
+  const s = Object.assign({}, BASE);
   applySet(s, 'infamy', '75');
   assertEqual(s.infamy, 75);
 });
 
 test('complex expression is silently skipped', () => {
-  const s = Object.assign({}, BASE_STATS);
-  const prev = s.wealth;
+  const s = Object.assign({}, BASE);
   applySet(s, 'wealth', 'other_var+10');
-  assertEqual(s.wealth, prev, 'complex expr must not change stat:');
+  assertEqual(s.wealth, 5000, 'complex expr must not change stat:');
 });
 
-test('simulateStats applies choices in order', () => {
+// ── Stats simulation — simulateStats / selection keying ───────────────────────
+suite('simulateStats — selection keying');
+
+test('selections keyed by choiceLine apply correctly', () => {
   const choices = [
-    { options: [{ statSets: [{var:'brutality', expr:'%+10'}] }, {statSets:[]}] },
-    { options: [{ statSets: [{var:'infamy', expr:'75'}]      }, {statSets:[]}] },
+    { choiceLine: 5,  options: [{ statSets: [{var:'brutality', expr:'%+10'}] }, {statSets:[]}] },
+    { choiceLine: 20, options: [{ statSets: [{var:'infamy',    expr:'75'}]    }, {statSets:[]}] },
   ];
-  const stats = simulateStats(choices, {0:0, 1:0}, Object.assign({}, BASE_STATS));
+  const sels = {5: 0, 20: 0};
+  const stats = simulateStats(choices, sels, Object.assign({}, BASE));
   assertEqual(stats.brutality, 55);
   assertEqual(stats.infamy, 75);
 });
 
-test('simulateStats uses starting stats as base', () => {
-  const starting = Object.assign({}, BASE_STATS, {wealth: 3000});
-  const choices  = [{ options: [{statSets: [{var:'wealth', expr:'+1000'}]}] }];
-  const stats    = simulateStats(choices, {0:0}, starting);
-  assertEqual(stats.wealth, 4000);
+test('non-default selection at choiceLine is applied', () => {
+  const choices = [
+    { choiceLine: 10, options: [
+      { statSets: [{var:'brutality', expr:'%+20'}] },  // index 0
+      { statSets: [{var:'cunning',   expr:'%+20'}] },  // index 1
+    ]},
+  ];
+  const sels = {10: 1};  // select option 1
+  const stats = simulateStats(choices, sels, Object.assign({}, BASE));
+  assertEqual(stats.brutality, 50, 'option 0 not applied:');
+  assertEqual(stats.cunning, fairAdd(50, 20), 'option 1 applied:');
 });
 
-test('simulateStats default selection is index 0', () => {
+test('default selection is index 0 when choiceLine not in sels', () => {
   const choices = [
-    { options: [
-      { statSets: [{var:'brutality', expr:'%+20'}] },  // option 0
-      { statSets: [{var:'cunning',   expr:'%+20'}] },  // option 1
-    ]}
+    { choiceLine: 7, options: [
+      { statSets: [{var:'brutality', expr:'%+20'}] },
+      { statSets: [{var:'cunning',   expr:'%+20'}] },
+    ]},
   ];
-  const stats = simulateStats(choices, {}, Object.assign({}, BASE_STATS));
+  const stats = simulateStats(choices, {}, Object.assign({}, BASE));
   assertEqual(stats.brutality, fairAdd(50, 20), 'option 0 selected by default:');
   assertEqual(stats.cunning, 50, 'option 1 not applied:');
 });
 
-// ── Render ────────────────────────────────────────────────────────────────────
+test('choiceLine key is stable across different array positions (regression: ci keying broke this)', () => {
+  // Simulate: same choice appears at ci=0 in one render, ci=1 in another.
+  // With ci keying, sels[0]=1 set when it was first in array, but then when
+  // a new choice is prepended it shifts to ci=1 and sels[1] is undefined → defaults to 0.
+  // With choiceLine keying, sels[choiceLine] stays correct regardless of position.
+  const choiceA = { choiceLine: 5, options: [
+    { statSets: [{var:'brutality', expr:'%+10'}] },
+    { statSets: [{var:'cunning',   expr:'%+10'}] },
+  ]};
+  const choiceB = { choiceLine: 15, options: [
+    { statSets: [{var:'infamy', expr:'25'}] },
+    { statSets: [{var:'infamy', expr:'50'}] },
+  ]};
+
+  // User selects option 1 on choiceA when it's at ci=0
+  const sels = {};
+  sels[choiceA.choiceLine] = 1;
+
+  // Now simulate rendering with a new choiceB prepended (choiceA shifts to ci=1)
+  const choices = [choiceB, choiceA];
+  const stats = simulateStats(choices, sels, Object.assign({}, BASE));
+
+  // choiceA should still use option 1 (cunning %+10), not option 0
+  assertEqual(stats.brutality, 50, 'option 0 of choiceA not applied:');
+  assertEqual(stats.cunning, fairAdd(50, 10), 'option 1 of choiceA still applied after reorder:');
+  // choiceB has no entry in sels, defaults to option 0 (infamy 25)
+  assertEqual(stats.infamy, 25, 'choiceB defaults to option 0:');
+});
+
+test('simulateStats applies multiple choices in sequence', () => {
+  const choices = [
+    { choiceLine: 3,  options: [{ statSets: [{var:'brutality', expr:'%+10'}] }] },
+    { choiceLine: 10, options: [{ statSets: [{var:'brutality', expr:'%+10'}] }] },
+  ];
+  const sels = {};
+  const stats = simulateStats(choices, sels, Object.assign({}, BASE));
+  // fairAdd(fairAdd(50,10), 10) = fairAdd(55, 10) = round(55 + 45*0.10) = round(59.5) = 60
+  assertEqual(stats.brutality, 60, 'two sequential fairmath pushes:');
+});
+
+// ── Render ─────────────────────────────────────────────────────────────────────
 const out = document.getElementById('output');
 let passed = 0, failed = 0;
 let currentRenderedSuite = '';
@@ -427,10 +476,10 @@ results.forEach(r => {
   const row = document.createElement('div');
   row.className = 'row';
   if (r.pass) {
-    row.innerHTML = `<span class="pass">✓</span> ${r.name}`;
+    row.innerHTML = `<span class="pass">&#10003;</span> ${r.name}`;
     passed++;
   } else {
-    row.innerHTML = `<span class="fail">✗</span> ${r.name}`;
+    row.innerHTML = `<span class="fail">&#10007;</span> ${r.name}`;
     const detail = document.createElement('div');
     detail.className = 'detail';
     detail.textContent = r.error;

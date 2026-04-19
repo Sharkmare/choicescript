@@ -223,7 +223,8 @@ body {
 .cm-cs-command-ext   { color: #ffb86c; font-weight: bold; }
 .cm-cs-unknown       { color: #ff5555; text-decoration: underline wavy #ff5555; }
 .cm-cs-label-def     { color: #f1fa8c; font-weight: bold; }
-.cm-cs-label-ref     { color: #f1fa8c; }
+.cm-cs-label-ref     { color: #f1fa8c; cursor: pointer; }
+.cm-cs-label-ref:hover { text-decoration: underline; }
 .cm-cs-option        { color: #50fa7b; font-style: italic; }
 .cm-cs-interpolation { color: #8be9fd; }
 .cm-cs-stat-op       { color: #ffb86c; font-weight: bold; }
@@ -617,7 +618,8 @@ CodeMirror.defineMIME('text/x-choicescript', 'choicescript');
     .cm-cs-command-ext   { color: #ffb86c; font-weight: bold; }
     .cm-cs-unknown       { color: #ff5555; text-decoration: underline; }
     .cm-cs-label-def     { color: #f1fa8c; font-weight: bold; }
-    .cm-cs-label-ref     { color: #f1fa8c; }
+    .cm-cs-label-ref     { color: #f1fa8c; cursor: pointer; }
+    .cm-cs-label-ref:hover { text-decoration: underline; }
     .cm-cs-option        { color: #50fa7b; font-style: italic; }
     .cm-cs-interpolation { color: #8be9fd; }
     .cm-cs-stat-op       { color: #ffb86c; font-weight: bold; }
@@ -922,6 +924,25 @@ editor.on('cursorActivity', () => {
   scheduleStatUpdate();
 });
 
+editor.getWrapperElement().addEventListener('click', e => {
+  const coords = { left: e.clientX, top: e.clientY };
+  const pos    = editor.coordsChar(coords, 'window');
+  const tok    = editor.getTokenAt(pos);
+  if (!tok.type || !tok.type.includes('cs-label-ref')) return;
+
+  const target = tok.string.trim().toLowerCase();
+  const lines  = editor.getValue().split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].trimStart().match(/^\*label\s+(\S+)/i);
+    if (m && m[1].toLowerCase() === target) {
+      editor.setCursor({ line: i, ch: 0 });
+      editor.scrollIntoView({ line: i, ch: 0 }, 120);
+      editor.focus();
+      return;
+    }
+  }
+});
+
 document.querySelectorAll('.ptab').forEach(tab => {
   tab.addEventListener('click', () => {
     document.querySelectorAll('.ptab').forEach(t => t.classList.remove('active'));
@@ -1104,8 +1125,9 @@ function applySet(stats, varName, expr) {
 
 function simulateStats(choices, selections, starting) {
   const stats = Object.assign({}, starting);
-  choices.forEach((choice, ci) => {
-    const selIdx = selections[ci] !== undefined ? selections[ci] : 0;
+  choices.forEach(choice => {
+    // Key by choiceLine so selections survive cursor movement and branch changes
+    const selIdx = selections[choice.choiceLine] !== undefined ? selections[choice.choiceLine] : 0;
     const option = choice.options[selIdx];
     if (!option) return;
     option.statSets.forEach(s => applySet(stats, s.var, s.expr));
@@ -1162,10 +1184,10 @@ function updateStatsPanel() {
         sel.appendChild(o);
       });
 
-      sel.value = sels[ci] !== undefined ? sels[ci] : 0;
+      sel.value = sels[choice.choiceLine] !== undefined ? sels[choice.choiceLine] : 0;
 
       sel.addEventListener('change', () => {
-        sels[ci] = parseInt(sel.value);
+        sels[choice.choiceLine] = parseInt(sel.value);
         renderStatBars(simulateStats(choices, sels, startingStats));
       });
 
@@ -1337,7 +1359,9 @@ async function previewContainer() {
     statsForUrl[k] = Math.round(Number(v) || 0);
   }
 
-  const content = lines.slice(startLine, endLine + 1).join('\n');
+  // *temp declarations let *set commands in the container work without startup.txt
+  const tempHeader = [...STAT_VARS].map(v => `*temp ${v} ${Math.round(Number(stats[v]) || 0)}`).join('\n');
+  const content = tempHeader + '\n' + lines.slice(startLine, endLine + 1).join('\n');
   try {
     await apiPost('/api/scene/_container_preview', {content});
   } catch (e) {
