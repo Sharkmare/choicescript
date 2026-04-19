@@ -626,6 +626,7 @@ CodeMirror.defineMIME('text/x-choicescript', 'choicescript');
 
 let currentScene   = '';
 let startingStats  = {};
+let sceneStatVars  = new Set();  // numeric *temp vars declared in the current scene
 let sceneSelections = {};  // sceneName → {choiceIdx → optionIdx}
 let saveTimer      = null;
 let statUpdateTimer = null;
@@ -870,6 +871,7 @@ async function loadScene(name) {
     applyContainerScope('');
     selectedContainerLine = '';
     expandedContainers.clear();
+    sceneStatVars = new Set();
     document.getElementById('container-label').textContent = '(Full file)';
     syncContainerDropdown();
     document.title = name + ' — ChoiceScript Editor';
@@ -1086,6 +1088,23 @@ function applyStartupConfig(text) {
   startingStats = cfg.startingStats;
 }
 
+// Discover numeric *temp declarations in the current scene so the stats panel
+// tracks variables that aren't in startup.txt (e.g. scene-local test vars).
+function refreshSceneStatVars(text) {
+  sceneStatVars = new Set();
+  for (const line of text.split('\n')) {
+    const m = line.trim().match(/^\*temp\s+(\w+)\s+(.+)/i);
+    if (!m) continue;
+    const v = m[1].toLowerCase();
+    if (statVars.has(v)) continue;  // already covered by startup
+    const n = parseFloat(m[2]);
+    if (!isNaN(n)) {
+      sceneStatVars.add(v);
+      if (startingStats[v] === undefined) startingStats[v] = n;
+    }
+  }
+}
+
 // Tracks which branch the cursor is in to filter to the path leading here.
 function parseStatChoices(text, cursorLine) {
   const lines    = text.split('\n');
@@ -1178,7 +1197,7 @@ function extractStatSets(lines, start, end) {
     const m = t.match(/^\*set\s+(\w+)\s+(.*)/i);
     if (m) {
       const v = m[1].toLowerCase();
-      if (statVars.has(v)) sets.push({var: v, expr: m[2].trim()});
+      if (statVars.has(v) || sceneStatVars.has(v)) sets.push({var: v, expr: m[2].trim()});
     }
   }
   return sets;
@@ -1231,6 +1250,7 @@ function updateStatsPanel() {
 
   const cursorLine = editor.getCursor().line;
   const text       = editor.getValue();
+  refreshSceneStatVars(text);
   const choices    = parseStatChoices(text, cursorLine);
 
   if (!sceneSelections[currentScene]) sceneSelections[currentScene] = {};
@@ -1315,6 +1335,13 @@ function renderStatBars(stats) {
   });
 
   integerStats.forEach(v => {
+    const val = stats[v] || 0;
+    const max = Math.max(val, startingStats[v] || 0, 1);
+    el.appendChild(makeBar(v, val, max, 'integer'));
+  });
+
+  // *temp vars from the scene that aren't already covered by startup config
+  sceneStatVars.forEach(v => {
     const val = stats[v] || 0;
     const max = Math.max(val, startingStats[v] || 0, 1);
     el.appendChild(makeBar(v, val, max, 'integer'));
