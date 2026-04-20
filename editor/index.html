@@ -633,15 +633,21 @@ let statUpdateTimer = null;
 let scenes         = [];
 
 const BASE = window.location.origin;
+const GAME = new URLSearchParams(window.location.search).get('game') || 'mygame';
+
+function apiPath(path) {
+  const sep = path.includes('?') ? '&' : '?';
+  return BASE + path + sep + 'game=' + encodeURIComponent(GAME);
+}
 
 async function apiGet(path) {
-  const r = await fetch(BASE + path);
+  const r = await fetch(apiPath(path));
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   return r.json();
 }
 
 async function apiPost(path, body) {
-  const r = await fetch(BASE + path, {
+  const r = await fetch(apiPath(path), {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
     body: JSON.stringify(body),
@@ -792,14 +798,42 @@ function clearError() {
   document.head.appendChild(s);
 })();
 
+// Inject preview-position highlight style
+(function() {
+  const s = document.createElement('style');
+  s.textContent = `
+    .cm-preview-position { background: rgba(80,250,123,0.10); border-left: 3px solid #50fa7b; }
+    .live-stats-tag { color: #50fa7b; font-size: 11px; padding: 3px 8px 3px; border-bottom: 1px solid #44475a; letter-spacing: 0.03em; }
+  `;
+  document.head.appendChild(s);
+})();
+
 function refreshPreview() {
   const frame = document.getElementById('preview-frame');
   const scene = currentScene === 'startup' ? '' : '&forcedScene=' + encodeURIComponent(currentScene);
-  frame.src = BASE + '/web/mygame/?t=' + Date.now() + scene;
+  frame.src = BASE + '/web/' + GAME + '/?t=' + Date.now() + scene;
 }
 
-document.getElementById('btn-preview').addEventListener('click', () => {
-  saveNow().then(refreshPreview);
+document.getElementById('btn-preview').addEventListener('click', async () => {
+  await saveNow();
+  const text = editor.getValue();
+  const hasStartup = parseContainers(text).some(
+    c => c.depth === 1 && c.name.toLowerCase() === 'startup'
+  );
+  if (hasStartup) {
+    try {
+      await apiPost('/api/explode', {content: text});
+      const {content: sc} = await apiGet('/api/scene/startup');
+      applyStartupConfig(sc);
+    } catch (e) {
+      console.warn('explode failed:', e);
+    }
+    // After explode the game starts from the extracted startup.txt — no forcedScene
+    const frame = document.getElementById('preview-frame');
+    frame.src = BASE + '/web/' + GAME + '/?t=' + Date.now();
+    return;
+  }
+  refreshPreview();
 });
 
 document.getElementById('btn-preview-container').addEventListener('click', () => {
@@ -1492,7 +1526,7 @@ async function previewContainer() {
 
   const frame = document.getElementById('preview-frame');
   const statsParam = encodeURIComponent(JSON.stringify(statsForUrl));
-  frame.src = `${BASE}/web/mygame/?t=${Date.now()}&forcedScene=_container_preview&forcedStats=${statsParam}`;
+  frame.src = `${BASE}/web/${GAME}/?t=${Date.now()}&forcedScene=_container_preview&forcedStats=${statsParam}`;
 }
 
 function syncContainerDropdown() {
@@ -1663,6 +1697,48 @@ editor.on('change', () => {
 });
 
 loadSceneList();
+
+// Live preview debugger: receive position updates from the game iframe
+let previewHighlightLine = null;
+
+window.addEventListener('message', e => {
+  if (!e.data || e.data.type !== 'cs-position') return;
+  const {scene, line, stats} = e.data;
+
+  // Clear previous highlight
+  if (previewHighlightLine !== null) {
+    editor.removeLineClass(previewHighlightLine, 'background', 'cm-preview-position');
+    previewHighlightLine = null;
+  }
+
+  // Map scene name + engine line offset → absolute line in the unified file
+  const text = editor.getValue();
+  const containers = parseContainers(text);
+  const container = containers.find(
+    c => c.depth === 1 && c.name.toLowerCase() === (scene || '').toLowerCase()
+  );
+
+  if (container) {
+    const absLine = container.line + 1 + (line || 0);
+    if (absLine < editor.lineCount()) {
+      editor.addLineClass(absLine, 'background', 'cm-preview-position');
+      editor.scrollIntoView({line: absLine, ch: 0}, 100);
+      previewHighlightLine = absLine;
+    }
+  }
+
+  // Render live stats from the game engine, replacing simulated values
+  if (stats && Object.keys(stats).length) {
+    renderStatBars(stats);
+    const sp = document.getElementById('stats-panel');
+    if (!sp.querySelector('.live-stats-tag')) {
+      const tag = document.createElement('div');
+      tag.className = 'live-stats-tag';
+      tag.textContent = '● Live';
+      sp.insertBefore(tag, sp.firstChild);
+    }
+  }
+});
 </script>
 </body>
 </html>

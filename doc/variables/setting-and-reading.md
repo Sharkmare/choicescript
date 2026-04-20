@@ -135,7 +135,7 @@ The variable's value is used directly as a 1-based index into the options. If `s
 
 The value must be a **whole integer** in range. If it is below 1, above the number of options, or a non-integer decimal, the engine throws a runtime error; there is no clamping. Ensure the index is always valid before using `@{}`.
 
-There is no automatic mapping from a range (like 0–100). You must compute the index explicitly. For example, `@{round(score/25) ...}` would map a 0–100 value to a 4-bucket index, but only if the result is always 1–4.
+There is no automatic mapping from a range (like 0-100). You must compute the index explicitly. For example, `@{round(score/25) ...}` would map a 0-100 value to a 4-bucket index, but only if the result is always 1-4.
 
 The options are separated by `|`.
 
@@ -184,7 +184,7 @@ You will be known as ${player_name}.
 ```
 
 ```
-How many soldiers do you send? (1–10)
+How many soldiers do you send? (1-10)
 *input_number soldiers_sent 1 10
 
 You dispatch ${soldiers_sent} soldiers to the front.

@@ -20,7 +20,10 @@ const mimeTypes = {
   '.txt': 'text/plain',
 }
 
-const SCENES_DIR = path.join(dir, 'web', 'mygame', 'scenes');
+function scenesDir(game) {
+  const safe = (game || 'mygame').replace(/[^a-zA-Z0-9_-]/g, '');
+  return path.join(dir, 'web', safe, 'scenes');
+}
 
 function sendJson(response, statusCode, data) {
   response.statusCode = statusCode;
@@ -29,7 +32,7 @@ function sendJson(response, statusCode, data) {
   response.end(JSON.stringify(data));
 }
 
-function handleApi(request, response, requestPath) {
+function handleApi(request, response, requestPath, requestUrl) {
   response.setHeader('Access-Control-Allow-Origin', '*');
 
   if (request.method === 'OPTIONS') {
@@ -38,6 +41,8 @@ function handleApi(request, response, requestPath) {
     response.end();
     return;
   }
+
+  const SCENES_DIR = scenesDir(requestUrl.searchParams.get('game'));
 
   if (request.method === 'GET' && requestPath === '/api/scenes') {
     try {
@@ -84,7 +89,53 @@ function handleApi(request, response, requestPath) {
     }
   }
 
+  if (request.method === 'POST' && requestPath === '/api/explode') {
+    let body = '';
+    request.on('data', chunk => { body += chunk; });
+    request.on('end', () => {
+      try {
+        const {content} = JSON.parse(body);
+        if (typeof content !== 'string') throw new Error('content must be a string');
+        const written = explodeScene(content, SCENES_DIR);
+        sendJson(response, 200, {written});
+      } catch (e) {
+        sendJson(response, 500, {error: e.message});
+      }
+    });
+    return;
+  }
+
   sendJson(response, 404, {error: 'Not found'});
+}
+
+// Extract all depth-1 container sections from a unified file into individual scene .txt files.
+// Each section named "X" is written to targetDir/X.txt with the marker line stripped.
+// Returns the list of scene names written.
+function explodeScene(content, targetDir) {
+  const CONTAINER_RE = /^\*comment\s+(=+)\s*(.+)/i;
+  const lines = content.split('\n');
+  const written = [];
+
+  // Collect depth-1 markers
+  const markers = [];
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(CONTAINER_RE);
+    if (m && m[1].length === 1) {
+      markers.push({lineIdx: i, name: m[2].trim().toLowerCase()});
+    }
+  }
+
+  if (markers.length === 0) return written;
+
+  for (let i = 0; i < markers.length; i++) {
+    const marker = markers[i];
+    const endLine = i + 1 < markers.length ? markers[i + 1].lineIdx - 1 : lines.length - 1;
+    const sectionLines = lines.slice(marker.lineIdx + 1, endLine + 1);
+    fs.writeFileSync(path.join(targetDir, marker.name + '.txt'), sectionLines.join('\n'), 'utf8');
+    written.push(marker.name);
+  }
+
+  return written;
 }
 
 const requestHandler = (request, response) => {
@@ -92,7 +143,7 @@ const requestHandler = (request, response) => {
   const requestPath = requestUrl.pathname;
 
   if (requestPath.startsWith('/api/')) {
-    handleApi(request, response, requestPath);
+    handleApi(request, response, requestPath, requestUrl);
     return;
   }
   let requestFile = path.normalize(`${dir}/${requestPath}`);

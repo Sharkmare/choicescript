@@ -19,7 +19,7 @@ Defines the rows that appear on the stats screen. Each row type controls how a v
 | Row type | Syntax | Notes |
 |---|---|---|
 | `text` | `text varname [Label]` | Shows the variable's value as plain text. Label is optional; defaults to the variable name. |
-| `percent` | `percent varname [Label]` | Shows the variable as a percentage bar (0–100). Label optional. |
+| `percent` | `percent varname [Label]` | Shows the variable as a percentage bar (0-100). Label optional. |
 | `opposed_pair` | `opposed_pair varname` then two indented label lines | Two-label percentage bar. High value (100) = first label. Low value (0) = second label. |
 
 ### `opposed_pair` syntax

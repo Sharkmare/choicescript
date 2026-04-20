@@ -305,15 +305,15 @@ The **Resulting Stats at Cursor** section renders one bar for each tracked stat.
 | Cunning | Honor ←→ Cunning |
 | Disdain | Vigilance ←→ Disdain |
 
-**Infamy** displays as a percentage bar (orange). Range 0–100. No pole labels.
+**Infamy** displays as a percentage bar (orange). Range 0-100. No pole labels.
 
 **Integer stats** display as follows:
 
 | Stat | Bar color | Scale |
 |---|---|---|
 | Wealth | Green | 0 to max of (current wealth, starting wealth, 1) |
-| Wounds | Red | 0–5 |
-| Blasphemy | Red | 0–3 |
+| Wounds | Red | 0-5 |
+| Blasphemy | Red | 0-3 |
 
 Starting values come from `startup.txt`. If `startup.txt` cannot be read, the defaults are used: brutality 50, cunning 50, disdain 50, infamy 0, wealth 5000, wounds 0, blasphemy 0.
 
@@ -467,6 +467,80 @@ The container dropdown shows:
 ```
 
 Selecting **The Crossroads** scopes to lines from that marker through the line before **The Long Road**. Selecting **Act One** scopes to all of Act One including its nested sections.
+
+---
+
+## Unified Scene Files
+
+A unified scene file contains all of a game's content in a single `.txt` file, organized into depth-1 container sections. One section, named `startup`, holds the declarations that would normally live in `startup.txt`. The rest hold the individual game scenes.
+
+When you click **▶ Preview** on a file that contains a `*comment = startup` section, the editor calls the server's explode endpoint before loading the game. The server reads the file, extracts each depth-1 section, and writes it to its own `.txt` file in the scenes directory. `startup.txt` is written from the startup section; `lair.txt`, `queenpolitics.txt`, and so on from the remaining sections. The game then runs from those extracted files. The source unified file is not altered.
+
+### Writing the Startup Section
+
+Place `*comment = startup` as the very first line of your file. Everything between that line and the next depth-1 container marker becomes the content of `startup.txt`. Write it exactly as you would write `startup.txt` directly: `*title`, `*author`, `*scene_list`, `*create` declarations, `*achievement` declarations, and the prose and choices that make up the first scene the player sees.
+
+```
+*comment = startup
+
+*title My Dragon Game
+*author You
+
+*scene_list
+  lair
+  queenpolitics
+  clutchmate
+
+*create brutality 50
+*create cunning 50
+*create disdain 50
+*create wealth 5000
+*create wounds 0
+
+Let us begin.
+
+A knight charges up the slope at you.
+*choice
+  #I take to the air.
+    *set brutality %-10
+    *goto startup_victory
+  #I breathe fire.
+    *set brutality %+10
+    *goto startup_victory
+
+*label startup_victory
+The knight retreats.
+*finish
+
+*comment = lair
+
+*if wounds >= 3
+  *goto_scene death
+
+Deep in the mountain, your hoard gleams.
+```
+
+The `*scene_list` in the startup section determines the order the engine loads scenes after startup. List the names of the other sections in the correct play order. The section names in your unified file must match these entries exactly, since the server uses the section names as filenames when extracting.
+
+### Scene Sections
+
+Each depth-1 section after startup becomes one extracted scene file. The section's content (everything between its marker and the next depth-1 marker) is written verbatim to `sectionname.txt`. The `*comment = sectionname` marker line itself is not included in the extracted file.
+
+`*goto_scene` commands in each section resolve against the extracted files. A `*goto_scene queenpolitics` in the lair section works because the server writes `queenpolitics.txt` from the queenpolitics section at the same time.
+
+`*finish` at the end of a section advances to the next scene in the `*scene_list`, same as in multi-file projects.
+
+### Backwards Compatibility
+
+Files without a `*comment = startup` section are not affected. **▶ Preview** works as before: it saves the current file and loads the game using whatever `startup.txt` exists in the scenes directory.
+
+This means you can mix approaches in the same project. Some scenes can be standalone `.txt` files written separately; others can live as sections inside a unified file and be exploded on preview.
+
+### What Gets Written
+
+Every time you click **▶ Preview** on a unified file, the server re-extracts all sections. Changes you make to any section take effect on the next preview click without any manual step. If a section's name matches an existing file in the scenes directory, the extracted content overwrites it.
+
+Files referenced by `*goto_scene` that are not sections in the unified file (such as `checkpoint.txt` in the original *Choice of the Dragon*) must exist separately in the scenes directory. The server writes only what is present in the unified file; it does not delete or modify any files that are not sections in that file.
 
 ---
 

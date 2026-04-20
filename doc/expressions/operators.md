@@ -57,14 +57,14 @@ Also enables `abs()` with negative variable arguments (see [functions.md](functi
 
 ## Fairmath (percentile stats)
 
-Fairmath operators push a value toward a pole on a 0–100 scale. They are designed for opposed-pair stats and produce diminishing returns as the value approaches the pole.
+Fairmath operators push a value toward a pole on a 0-100 scale. They are designed for opposed-pair stats and produce diminishing returns as the value approaches the pole.
 
 | Operator | Direction | Effect |
 |---|---|---|
 | `%+` | Toward 100 | Harder to move when already high |
 | `%-` | Toward 0 | Harder to move when already low |
 
-**Only use `%+` and `%-` on variables in the 0–100 range.** Never use them on `wealth`, `wounds`, `blasphemy`, or other plain integers.
+**Only use `%+` and `%-` on variables in the 0-100 range.** Never use them on `wealth`, `wounds`, `blasphemy`, or other plain integers.
 
 ### Formulas
 

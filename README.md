@@ -50,6 +50,8 @@ Any number of depths works. The dropdown renders a collapsible tree.
 
 **Stats simulator.** Open the Stats tab on the right. The panel lists every choice block above your cursor that affects a stat variable. Pick an option from each dropdown to simulate a playthrough path. The stat bars update immediately. Selections persist per scene for the session.
 
+**Unified scene files.** Write an entire game in one `.txt` file using depth-1 container sections. Name one section `startup` and it becomes your `startup.txt`; the rest become individual scene files. Click Preview and the editor extracts each section to its own `.txt` before loading the game. One file to edit, standard multi-file output to run.
+
 **Preview container.** When you're scoped to a container, a "Here" button appears in the toolbar. It runs the game starting from that container's content, with stats pre-seeded from your current simulator selections. You can test one section without replaying the whole scene.
 
 **Code folding.** Any indented block can be folded with the gutter arrow or Ctrl+Q. Works inside container scope.
@@ -106,7 +108,7 @@ Full reference at [doc/README.md](doc/README.md).
 
 Particularly useful pages:
 
-- [Editor](doc/getting-started/editor.md): container markers, stat simulator, preview container, full shortcut list
+- [Editor](doc/getting-started/editor.md): container markers, stat simulator, unified scene files, preview container, full shortcut list
 - [Variables](doc/variables/declaring.md): `*create` vs `*temp`, scope rules
 - [Engine Extensions](doc/extensions/README.md): the non-standard commands available in this fork
 

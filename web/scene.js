@@ -2103,6 +2103,7 @@ Scene.prototype.page_break = function page_break(buttonName) {
         self.resetPage();
       }
     );
+    if (typeof notifyEditorPosition === 'function') notifyEditorPosition();
     if (this.debugMode) println(computeCookie(this.stats, this.temps, this.lineNum, this.indent));
 };
 

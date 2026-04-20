@@ -12,7 +12,6 @@ stats = {
  "strength": "50"
 };
 purchases = {
- "fake:adfree": "adfree",
  "fake:skiponce": "skiponce"
 };
 achievements = [];

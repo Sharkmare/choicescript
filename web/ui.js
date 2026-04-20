@@ -935,6 +935,20 @@ function printCheckboxes(options, submitButtonNameFunction, callback) {
   printButton(submitButtonNameFunction(checked ? options.length : 0), form, true);
 }
 
+function notifyEditorPosition() {
+  if (window.parent === window) return;
+  try {
+    var scene = window.stats && window.stats.scene;
+    if (!scene) return;
+    window.parent.postMessage({
+      type: 'cs-position',
+      scene: scene.name,
+      line: scene.lineNum,
+      stats: Object.assign({}, scene.stats)
+    }, '*');
+  } catch (e) {}
+}
+
 function printOptions(groups, options, callback) {
   var form = document.createElement("form");
   main.appendChild(form);
@@ -1122,6 +1136,7 @@ function printOptions(groups, options, callback) {
       form.onsubmit();
     });
   }
+  notifyEditorPosition();
 }
 
 function printOptionButton(div, type, name, option, localChoiceNumber, globalChoiceNumber, isLast, checked) {
